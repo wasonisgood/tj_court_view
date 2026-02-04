@@ -264,6 +264,39 @@
             );
         };
 
+        // --- Key Cases Component ---
+    const KeyCasesSection = ({ db, onSelectCase }) => {
+            const keyCases = useMemo(() => db.filter(item => item.ai_summary).slice(0, 6), [db]);
+            if (keyCases.length === 0) return null;
+
+            return (
+                <div class="mb-12">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                        <i class="fas fa-star text-yellow-500 mr-2"></i>
+                        重點案例 (AI 智慧摘要)
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {keyCases.map((item, idx) => (
+                            <div key={idx} onClick={() => onSelectCase(item.meta.id)} class="bg-white rounded-xl shadow-md border-l-4 border-yellow-400 hover:shadow-xl transition-all cursor-pointer group flex flex-col h-full overflow-hidden relative">
+                                <div class="absolute top-2 right-2 text-yellow-400 opacity-20 group-hover:opacity-100 transition-opacity"><i class="fas fa-robot text-3xl"></i></div>
+                                <div class="p-5 flex-1">
+                                    <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{item.meta.court}</div>
+                                    <h4 class="font-bold text-slate-800 mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">{item.meta.title}</h4>
+                                    <div class="bg-yellow-50 rounded p-3 mb-3 border border-yellow-100">
+                                        <p class="text-xs text-slate-700 line-clamp-3 leading-relaxed"><i class="fas fa-quote-left text-yellow-300 mr-1"></i>{item.ai_summary[0]?.point || "點擊查看摘要詳情..."}</p>
+                                    </div>
+                                    <div class="text-xs text-gray-500 flex justify-between items-center mt-auto">
+                                        <span>{item.meta.date_minguo}</span>
+                                        <span class="text-blue-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity">閱讀詳情 <i class="fas fa-arrow-right ml-1"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
         const Dashboard = ({ db, onSelectCase }) => {
             const [activeCategory, setActiveCategory] = useState(null);
             const [modalState, setModalState] = useState({ isOpen: false, title: '', items: [] });
@@ -273,8 +306,8 @@
                 const overview = { totalCases: db.length, totalCourts: new Set(db.map(m => m.analysis_meta.court_normalized)).size, categories: {} };
                 const details = {};
                 db.forEach(item => {
-                    const cat = item.analysis_meta.category_normalized;
-                    const court = item.analysis_meta.court_normalized;
+                    const cat = item.analysis_meta.category_normalized || '未分類';
+                    const court = item.analysis_meta.court_normalized || '其他';
                     if (!overview.categories[cat]) overview.categories[cat] = 0;
                     overview.categories[cat]++;
                     if (!details[cat]) details[cat] = {};
@@ -294,225 +327,74 @@
                 let filteredItems = [];
                 if (type === 'decision') filteredItems = categoryData.items.filter(m => (m.decision_result || '其他') === label);
                 else if (type === 'mainText') filteredItems = categoryData.items.filter(m => (m.main_text_clean || '(無主文)') === label);
-                setModalState({ isOpen: true, title: `${court} - ${label}`, items: filteredItems });
+                setModalState({ isOpen: true, title: court + ' - ' + label, items: filteredItems });
             };
 
             const handleExport = (mode) => {
                 const wb = XLSX.utils.book_new();
-                
-                // Group by category
                 const groups = {};
-                db.forEach(item => {
-                    const cat = item.analysis_meta.category_normalized || '未分類';
-                    if (!groups[cat]) groups[cat] = [];
-                    groups[cat].push(item);
-                });
-
-                // Sort categories by passage date
-                const catWeights = {
-                    '戒嚴時期人民受損權利回復條例': 1,
-                    '二二八事件處理及補償條例': 2,
-                    '戒嚴時期不當叛亂暨匪諜審判案件補償條例': 3,
-                    '政黨及其附隨組織不當取得財產處理條例': 4,
-                    '促進轉型正義條例': 5,
-                    '威權統治時期國家不法行為被害者權利回復條例': 6
-                };
-
-                const sortedCats = Object.keys(groups).sort((a, b) => {
-                    const wa = catWeights[a] || 99;
-                    const wb_val = catWeights[b] || 99;
-                    return wa - wb_val;
-                });
-
-                // --- 1. Category Sheets with Stats ---
+                db.forEach(item => { const cat = item.analysis_meta.category_normalized || '未分類'; if (!groups[cat]) groups[cat] = []; groups[cat].push(item); });
+                const catWeights = { '戒嚴時期人民受損權利回復條例': 1, '二二八事件處理及補償條例': 2, '戒嚴時期不當叛亂暨匪諜審判案件補償條例': 3, '政黨及其附隨組織不當取得財產處理條例': 4, '促進轉型正義條例': 5, '威權統治時期國家不法行為被害者權利回復條例': 6 };
+                const sortedCats = Object.keys(groups).sort((a, b) => (catWeights[a]||99) - (catWeights[b]||99));
                 sortedCats.forEach(cat => {
-                    // A. Prepare Data Rows
                     const rows = groups[cat].map(item => {
                         const courtName = item.analysis_meta.court_normalized || item.meta.court || '其他';
-                        const base = {
-                            '案號': item.meta.id,
-                            '標題': item.meta.title,
-                            '法院': courtName,
-                            '判決日期': item.meta.date_minguo,
-                            '案由': item.meta.cause,
-                            '判決結果': item.decision_result,
-                            '原始連結': item.meta.source_url, // Added URL
-                            '主文': item.main_text_clean
-                        };
-
-                        if (mode === 'summary') {
-                            base['AI 摘要'] = item.ai_summary ? item.ai_summary.map((s, i) => `${i+1}. ${s.point}`).join('\n') : '';
-                        } else if (mode === 'full') {
-                            base['全文內容'] = item.sections ? Object.entries(item.sections).map(([k, v]) => `【${k}】\n${v}`).join('\n\n') : '';
-                        }
+                        const base = { '案號': item.meta.id, '標題': item.meta.title, '法院': courtName, '判決日期': item.meta.date_minguo, '案由': item.meta.cause, '判決結果': item.decision_result, '原始連結': item.meta.source_url, '主文': item.main_text_clean };
+                        if (mode === 'summary') base['AI 摘要'] = item.ai_summary ? item.ai_summary.map((s, i) => (i+1) + '. ' + s.point).join('\n') : '';
+                        else if (mode === 'full') base['全文內容'] = item.sections ? Object.entries(item.sections).map(([k, v]) => '【' + k + '】\n' + v).join('\n\n') : '';
                         return base;
                     });
-
                     const ws = XLSX.utils.json_to_sheet(rows);
-
-                    // B. Calculate & Append Court Statistics
-                    const courtStats = {};
-                    groups[cat].forEach(item => {
-                        const c = item.analysis_meta.court_normalized || item.meta.court || '其他';
-                        courtStats[c] = (courtStats[c] || 0) + 1;
-                    });
-                    
-                    // Convert stats to rows for appending
-                    // We map them to the first few columns to keep structure valid
-                    const statRows = [
-                        {}, // Empty row for spacing
-                        { '案號': '【法院案件量統計】' }, // Header
-                        ...Object.entries(courtStats)
-                           .sort((a, b) => b[1] - a[1])
-                           .map(([court, count]) => ({
-                               '案號': court,
-                               '標題': `${count} 件`
-                           }))
-                    ];
-
+                    const courtStats = {}; groups[cat].forEach(i => { const c = i.analysis_meta.court_normalized || i.meta.court || '其他'; courtStats[c] = (courtStats[c]||0)+1; });
+                    const statRows = [{}, {'案號': '【法院案件量統計】'}, ...Object.entries(courtStats).sort((a,b)=>b[1]-a[1]).map(([c,n])=>({'案號':c, '標題': n + ' 件'}))];
                     XLSX.utils.sheet_add_json(ws, statRows, { skipHeader: true, origin: -1 });
-
-                    // C. Formatting
-                    ws['!cols'] = [
-                        { wch: 25 }, // 案號
-                        { wch: 35 }, // 標題
-                        { wch: 15 }, // 法院
-                        { wch: 20 }, // 判決日期
-                        { wch: 20 }, // 案由
-                        { wch: 15 }, // 判決結果
-                        { wch: 50 }, // 原始連結
-                        { wch: 40 }  // 主文
-                    ];
-                    if (mode === 'summary') ws['!cols'].push({ wch: 80 });
-                    if (mode === 'full') ws['!cols'].push({ wch: 100 });
-
                     XLSX.utils.book_append_sheet(wb, ws, cat.substring(0, 31));
                 });
-
-                // --- 2. New Decadal Trends Sheet ---
-                const decadalStats = {}; // { "1990s": { "LawA": 10, "LawB": 5 } }
-                
+                const decadalStats = {};
                 db.forEach(item => {
-                    const date = item.meta.date_iso; // "YYYY-MM-DD"
-                    if (!date) return;
-                    
-                    const year = parseInt(date.split('-')[0]);
-                    if (isNaN(year)) return;
-                    
-                    const decade = Math.floor(year / 10) * 10;
-                    const decadeLabel = `${decade}年代`;
-                    const cat = item.analysis_meta.category_normalized || '未分類';
-
-                    if (!decadalStats[decadeLabel]) decadalStats[decadeLabel] = {};
-                    if (!decadalStats[decadeLabel][cat]) decadalStats[decadeLabel][cat] = 0;
-                    decadalStats[decadeLabel][cat]++;
+                   const date = item.meta.date_iso; if(!date) return;
+                   const year = parseInt(date.split('-')[0]); if(isNaN(year)) return;
+                   const decade = Math.floor(year/10)*10 + "年代";
+                   const cat = item.analysis_meta.category_normalized || '未分類';
+                   if(!decadalStats[decade]) decadalStats[decade] = {}; if(!decadalStats[decade][cat]) decadalStats[decade][cat] = 0; decadalStats[decade][cat]++;
                 });
-
-                // Flatten for SheetJS
-                const trendRows = Object.keys(decadalStats).sort().map(decade => {
-                    const row = { '年代區間': decade };
-                    sortedCats.forEach(cat => {
-                        row[cat] = decadalStats[decade][cat] || 0;
-                    });
-                    return row;
-                });
-
+                const trendRows = Object.keys(decadalStats).sort().map(d => { const row = { '年代區間': d }; sortedCats.forEach(c => row[c] = decadalStats[d][c] || 0); return row; });
                 const wsTrends = XLSX.utils.json_to_sheet(trendRows);
-                
-                // Highlight Max Value in each decade (row)
-                trendRows.forEach((row, rowIndex) => {
-                    let maxVal = -1;
-                    let maxColIndex = -1;
-
-                    sortedCats.forEach((cat, colIndex) => {
-                        const val = row[cat] || 0;
-                        if (val > maxVal && val > 0) {
-                            maxVal = val;
-                            maxColIndex = colIndex + 1; // +1 because first col is '年代區間'
-                        }
-                    });
-
-                    if (maxColIndex !== -1) {
-                        const cellRef = XLSX.utils.encode_cell({ r: rowIndex + 1, c: maxColIndex });
-                        if (wsTrends[cellRef]) {
-                            wsTrends[cellRef].s = {
-                                fill: { fgColor: { rgb: "FFFF00" } }, // Yellow background
-                                font: { bold: true },
-                                alignment: { horizontal: "center" }
-                            };
-                        }
-                    }
-                });
-
-                // Set trend column widths
-                const trendCols = [{ wch: 15 }]; // Date column
-                sortedCats.forEach(() => trendCols.push({ wch: 25 })); // Category columns
-                wsTrends['!cols'] = trendCols;
-
+                trendRows.forEach((row, rIdx) => { let maxV = -1, maxC = -1; sortedCats.forEach((c, cIdx) => { const v = row[c]||0; if(v > maxV && v > 0) { maxV = v; maxC = cIdx+1; } }); if(maxC !== -1) { const ref = XLSX.utils.encode_cell({r: rIdx+1, c: maxC}); if(wsTrends[ref]) wsTrends[ref].s = { fill: { fgColor: { rgb: "FFFF00" } }, font: { bold: true } }; } });
                 XLSX.utils.book_append_sheet(wb, wsTrends, "年代趨勢統計");
-
-                // --- 3. Robust Download Trigger ---
                 try {
                     const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
-                    const s2ab = (s) => {
-                        const buf = new ArrayBuffer(s.length);
-                        const view = new Uint8Array(buf);
-                        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
-                        return buf;
-                    };
-
+                    const s2ab = (s) => { const buf = new ArrayBuffer(s.length); const view = new Uint8Array(buf); for (let i=0; i<s.length; i++) view[i] = s.charCodeAt(i) & 0xFF; return buf; };
                     const blob = new Blob([s2ab(wbout)], { type: "application/octet-stream" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = `轉型正義判決匯出_${new Date().toISOString().split('T')[0]}.xlsx`;
-                    document.body.appendChild(a);
-                    a.click();
-                    
-                    // Cleanup
-                    setTimeout(() => {
-                        document.body.removeChild(a);
-                        window.URL.revokeObjectURL(url);
-                    }, 100);
-
-                } catch (e) {
-                    console.error("Export failed:", e);
-                    // Fallback to simpler method if blob fails
-                    XLSX.writeFile(wb, `轉型正義判決匯出_${new Date().toISOString().split('T')[0]}.xlsx`);
-                }
-                
+                    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "轉型正義判決匯出_" + new Date().toISOString().split('T')[0] + ".xlsx"; document.body.appendChild(a); a.click(); setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                } catch(e) { console.error(e); XLSX.writeFile(wb, "export.xlsx"); }
                 setExportModalOpen(false);
             };
 
             return (
                 <div class="p-4 md:p-6 max-w-7xl mx-auto">
-                    <Modal isOpen={modalState.isOpen} onClose={() => setModalState({ ...modalState, isOpen: false })} title={modalState.title} items={modalState.items} onSelectCase={(path) => { setModalState({ ...modalState, isOpen: false }); onSelectCase(path); }} />
+                    <Modal isOpen={modalState.isOpen} onClose={() => setModalState({ ...modalState, isOpen: false })} title={modalState.title} items={modalState.items} onSelectCase={(id) => { setModalState({ ...modalState, isOpen: false }); onSelectCase(id); }} />
                     <ExportModal isOpen={isExportModalOpen} onClose={() => setExportModalOpen(false)} onExport={handleExport} />
                     
                     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
                         <h2 class="text-xl md:text-2xl font-bold text-slate-800"><i class="fas fa-chart-pie mr-3 text-blue-600"></i>數據儀表板</h2>
                         <div class="flex space-x-2 mt-4 md:mt-0">
-                            <button 
-                                onClick={() => setExportModalOpen(true)}
-                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-all flex items-center"
-                            >
-                                <i class="fas fa-file-excel mr-2"></i> 匯出 Excel
-                            </button>
+                            <button onClick={() => setExportModalOpen(true)} class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-all flex items-center"><i class="fas fa-file-excel mr-2"></i> 匯出 Excel</button>
                             {activeCategory && <button onClick={() => setActiveCategory(null)} class="text-sm bg-gray-200 px-3 py-2 rounded text-slate-600"><i class="fas fa-arrow-left mr-1"></i> 返回總覽</button>}
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-2 mb-8 pb-2 border-b">
-                        <button onClick={() => setActiveCategory(null)} class={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${!activeCategory ? 'bg-slate-800 text-white shadow' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>總覽</button>
-                        {Object.keys(stats.details || {}).map(cat => (
-                            <button key={cat} onClick={() => setActiveCategory(cat)} class={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${activeCategory === cat ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`}>{cat}</button>
-                        ))}
-                    </div>
+
+                    {!activeCategory && <KeyCasesSection db={db} onSelectCase={onSelectCase} />}
+
+                    <h3 class="text-lg font-bold text-slate-700 mb-4 border-l-4 border-slate-500 pl-3">{activeCategory ? activeCategory : "資料庫統計總覽"}</h3>
+
                     {!activeCategory ? (
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {Object.entries(stats.overview?.categories || {}).map(([cat, count]) => (
-                                <div key={cat} onClick={() => setActiveCategory(cat)} class="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md cursor-pointer group">
-                                    <div class="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2 group-hover:text-blue-600">{cat}</div>
+                                <div key={cat} onClick={() => setActiveCategory(cat)} class="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md cursor-pointer group hover:border-blue-300 transition-all">
+                                    <div class="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2 group-hover:text-blue-600 truncate" title={cat}>{cat}</div>
                                     <div class="text-3xl font-bold text-slate-800">{count} <span class="text-xs font-normal text-gray-400">件判決</span></div>
+                                    <div class="mt-4 h-1 w-full bg-gray-100 rounded overflow-hidden"><div class="h-full bg-blue-500" style={{width: '30%'}}></div></div>
                                 </div>
                             ))}
                         </div>
@@ -548,7 +430,6 @@
                 </div>
             );
         };
-
         const GEMINI_API_KEY = "AIzaSyCZaSb7T-jBnVKrlhvSiGpTks_HI4gLtI0"; // ⚠️ SECURITY WARNING: Exposing API keys in client-side code is insecure for public websites. Use with caution or backend proxy.
 
         const GeminiSummary = ({ text, onClickRef, savedSummary }) => {
@@ -711,24 +592,46 @@ ${numberedText}`;
 
         const App = () => {
             const db = window.JUDGMENT_DB || [];
-            const [view, setView] = useState('dashboard');
-            const [selectedPath, setSelectedPath] = useState(null);
-            const [judgment, setJudgment] = useState(null);
+            // Routing State
+            const getHashPath = () => window.location.hash.slice(1);
+            const [currentHash, setCurrentHash] = useState(getHashPath());
+
+            useEffect(() => {
+                const onHashChange = () => setCurrentHash(getHashPath());
+                window.addEventListener('hashchange', onHashChange);
+                return () => window.removeEventListener('hashchange', onHashChange);
+            }, []);
+
+            // Derived State
+            const view = currentHash.startsWith('case/') ? 'reader' : 'dashboard';
+            const selectedId = view === 'reader' ? decodeURIComponent(currentHash.replace('case/', '')) : null;
+
+            const judgment = useMemo(() => {
+                if (!selectedId) return null;
+                // Find by ID first, fallback to path for backward compatibility if needed
+                return db.find(x => x.meta.id === selectedId || x.analysis_meta.path === selectedId);
+            }, [db, selectedId]);
+
+            // Handlers
+            const navigateToCase = (id) => {
+                // Use ID for clean URL
+                window.location.hash = `case/${encodeURIComponent(id)}`;
+            };
+            const navigateHome = () => {
+                window.location.hash = '';
+            };
+
             const [searchTerm, setSearchTerm] = useState("");
             const [highlightTerm, setHighlightTerm] = useState(null);
             const [isSidebarOpen, setSidebarOpen] = useState(false);
             const [showHelp, setShowHelp] = useState(false);
             const [showLaws, setShowLaws] = useState(true);
 
+            // Effect to reset sidebar on route change
             useEffect(() => {
-                if(selectedPath) {
-                    setView('reader');
-                    setHighlightTerm(null);
-                    const found = db.find(x => x.analysis_meta.path === selectedPath);
-                    setJudgment(found);
-                    setSidebarOpen(false);
-                }
-            }, [selectedPath, db]);
+                setSidebarOpen(false);
+                if (view === 'reader') setHighlightTerm(null);
+            }, [currentHash, view]);
 
             const sidebarData = useMemo(() => {
                 const grouped = {};
@@ -761,12 +664,12 @@ ${numberedText}`;
                     <div class={`fixed inset-0 z-40 bg-slate-900 text-gray-300 flex flex-col transition-transform md:translate-x-0 md:relative md:w-80 md:flex ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                         <div class="p-4 bg-slate-800 shadow z-10 hidden md:block">
                             <h1 class="font-bold text-white mb-4 flex justify-between">
-                                <span onClick={() => setView('dashboard')} class="cursor-pointer">轉型正義決定系統</span>
+                                <span onClick={navigateHome} class="cursor-pointer">轉型正義決定系統</span>
                                 <button onClick={() => setShowHelp(true)} class="text-gray-500"><i class="fas fa-question-circle"></i></button>
                             </h1>
                             <div class="flex bg-slate-700 rounded p-1 mb-4">
-                                <button onClick={()=>setView('dashboard')} class={`flex-1 py-1 text-xs font-bold rounded ${view==='dashboard'?'bg-blue-600 text-white':'hover:text-white'}`}>統計</button>
-                                <button onClick={()=>setView('reader')} class={`flex-1 py-1 text-xs font-bold rounded ${view==='reader'?'bg-blue-600 text-white':'hover:text-white'}`}>閱讀</button>
+                                <button onClick={navigateHome} class={`flex-1 py-1 text-xs font-bold rounded ${view==='dashboard'?'bg-blue-600 text-white':'hover:text-white'}`}>統計</button>
+                                <button class={`flex-1 py-1 text-xs font-bold rounded opacity-50 cursor-not-allowed`}>閱讀</button>
                             </div>
                             <input type="text" placeholder="快速檢索..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-white" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
                         </div>
@@ -790,7 +693,10 @@ ${numberedText}`;
                                                             </summary>
                                                             <div class="pl-4 mt-1 space-y-0.5 border-l border-slate-700 ml-2">
                                                                 {items.map(item => (
-                                                                    <button key={item.analysis_meta.path} onClick={()=>setSelectedPath(item.analysis_meta.path)} class={`w-full text-left text-[10px] px-3 py-1.5 rounded truncate transition-colors ${selectedPath === item.analysis_meta.path ? 'bg-blue-900 text-blue-200' : 'text-gray-500 hover:text-gray-300'}`}>{item.meta.title}</button>
+                                                                    <button key={item.meta.id} onClick={()=>navigateToCase(item.meta.id)} class={`w-full text-left text-[10px] px-3 py-1.5 rounded truncate transition-colors flex items-center ${selectedId === item.meta.id ? 'bg-blue-900 text-blue-200' : 'text-gray-500 hover:text-gray-300'}`}>
+                                                                        {item.ai_summary && <i class="fas fa-star text-yellow-500 mr-2 text-[8px]" title="AI 重點案例"></i>}
+                                                                        {item.meta.title}
+                                                                    </button>
                                                                 ))}
                                                             </div>
                                                         </details>
@@ -804,14 +710,16 @@ ${numberedText}`;
                         </div>
                     </div>
                     <div class="flex-1 overflow-y-auto bg-gray-100 w-full relative">
-                        {view === 'dashboard' ? <Dashboard db={db} onSelectCase={setSelectedPath} /> : (
+                        {view === 'dashboard' ? <Dashboard db={db} onSelectCase={navigateToCase} /> : (
                             judgment ? (
                                 <div class="max-w-5xl mx-auto my-4 md:my-8 p-6 md:p-12 bg-white shadow-xl rounded-2xl min-h-[80vh]">
                                     <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-10 pb-8 border-b-2 border-slate-100">
                                         <div>
                                             <div class="flex space-x-2 mb-4">
+                                                <button onClick={navigateHome} class="px-3 py-1 bg-gray-200 text-gray-600 text-[10px] font-black rounded hover:bg-gray-300 transition-colors"><i class="fas fa-arrow-left mr-1"></i> 返回</button>
                                                 <span class="px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded uppercase tracking-widest">{judgment.meta.court}</span>
                                                 <span class="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded uppercase tracking-widest border border-blue-100">{judgment.decision_result}</span>
+                                                {judgment.ai_summary && <span class="px-3 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-black rounded uppercase tracking-widest border border-yellow-200"><i class="fas fa-star mr-1"></i>重點案例</span>}
                                             </div>
                                             <h2 class="text-2xl md:text-3xl font-black text-slate-900 leading-tight tracking-tight">{judgment.meta.title}</h2>
                                         </div>
@@ -838,7 +746,7 @@ ${numberedText}`;
                                         <div class="mt-16 pt-8 border-t border-slate-200">
                                             <div class="flex justify-between items-center mb-4 cursor-pointer select-none group" onClick={() => setShowLaws(!showLaws)}>
                                                 <h4 class="text-sm font-bold text-slate-700 flex items-center group-hover:text-blue-600 transition-colors">
-                                                    <i class={`fas fa-chevron-${showLaws ? 'down' : 'right'} mr-2 text-slate-400 w-4 text-center`}></i>
+                                                    <i class={`fas ${showLaws ? 'fa-chevron-down' : 'fa-chevron-right'} mr-2 text-slate-400 w-4 text-center`}></i>
                                                     引用法源標示
                                                     <span class="ml-2 bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{judgment.extracted_laws.length}</span>
                                                 </h4>
@@ -876,7 +784,6 @@ ${numberedText}`;
                 </div>
             );
         };
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>

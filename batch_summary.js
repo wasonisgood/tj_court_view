@@ -172,6 +172,7 @@ ${numberedText}`;
 
             } catch (apiErr) {
                 if (apiErr.message.includes('429')) {
+                    console.log("  -> Raw API Error:", apiErr.message); // Added for verification
                     retryCount++;
                     // Try to extract "Please retry in 38.402350949s."
                     const match = apiErr.message.match(/Please retry in ([\d.]+)s/);
