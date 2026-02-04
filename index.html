@@ -8,7 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- 引入靜態資料庫 -->
     <script src="data.js"></script> 
@@ -411,27 +411,76 @@
                 // Flatten for SheetJS
                 const trendRows = Object.keys(decadalStats).sort().map(decade => {
                     const row = { '年代區間': decade };
-                    let total = 0;
                     sortedCats.forEach(cat => {
-                        const count = decadalStats[decade][cat] || 0;
-                        row[cat] = count;
-                        total += count;
+                        row[cat] = decadalStats[decade][cat] || 0;
                     });
-                    row['區間總計'] = total;
                     return row;
                 });
 
                 const wsTrends = XLSX.utils.json_to_sheet(trendRows);
                 
+                // Highlight Max Value in each decade (row)
+                trendRows.forEach((row, rowIndex) => {
+                    let maxVal = -1;
+                    let maxColIndex = -1;
+
+                    sortedCats.forEach((cat, colIndex) => {
+                        const val = row[cat] || 0;
+                        if (val > maxVal && val > 0) {
+                            maxVal = val;
+                            maxColIndex = colIndex + 1; // +1 because first col is '年代區間'
+                        }
+                    });
+
+                    if (maxColIndex !== -1) {
+                        const cellRef = XLSX.utils.encode_cell({ r: rowIndex + 1, c: maxColIndex });
+                        if (wsTrends[cellRef]) {
+                            wsTrends[cellRef].s = {
+                                fill: { fgColor: { rgb: "FFFF00" } }, // Yellow background
+                                font: { bold: true },
+                                alignment: { horizontal: "center" }
+                            };
+                        }
+                    }
+                });
+
                 // Set trend column widths
                 const trendCols = [{ wch: 15 }]; // Date column
-                sortedCats.forEach(() => trendCols.push({ wch: 20 })); // Category columns
-                trendCols.push({ wch: 10 }); // Total
+                sortedCats.forEach(() => trendCols.push({ wch: 25 })); // Category columns
                 wsTrends['!cols'] = trendCols;
 
                 XLSX.utils.book_append_sheet(wb, wsTrends, "年代趨勢統計");
 
-                XLSX.writeFile(wb, `轉型正義判決匯出_${new Date().toISOString().split('T')[0]}.xlsx`);
+                // --- 3. Robust Download Trigger ---
+                try {
+                    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+                    const s2ab = (s) => {
+                        const buf = new ArrayBuffer(s.length);
+                        const view = new Uint8Array(buf);
+                        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+                        return buf;
+                    };
+
+                    const blob = new Blob([s2ab(wbout)], { type: "application/octet-stream" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = `轉型正義判決匯出_${new Date().toISOString().split('T')[0]}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Cleanup
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                    }, 100);
+
+                } catch (e) {
+                    console.error("Export failed:", e);
+                    // Fallback to simpler method if blob fails
+                    XLSX.writeFile(wb, `轉型正義判決匯出_${new Date().toISOString().split('T')[0]}.xlsx`);
+                }
+                
                 setExportModalOpen(false);
             };
 
