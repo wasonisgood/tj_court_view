@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轉型正義最高司法機關決定系統</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- 引入靜態資料庫 -->
+    <script src="data.js"></script> 
+    <style>
+        body { font-family: "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif; }
+        .sidebar-scroll { height: calc(100vh - 110px); }
+        .bar-label { width: 140px; font-size: 0.85rem; color: #4b5563; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+        .bar-fill { height: 16px; border-radius: 4px; transition: width 0.5s ease; cursor: pointer; }
+        .bar-fill:hover { opacity: 0.8; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.5); }
+        
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] > summary .arrow { transform: rotate(90deg); }
+        .arrow { transition: transform 0.2s ease; }
+
+        .sidebar-mobile { transition: transform 0.3s ease-in-out; }
+        .sidebar-open { transform: translateX(0); }
+        .sidebar-closed { transform: translateX(-100%); }
+    </style>
+</head>
+<body class="bg-gray-100 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- Helpers & Components ---
+
+        // 改進後的角色解析組件
+        const PrefaceCard = ({ text }) => {
+            if (!text) return null;
+
+            const roles = [
+                "上訴人", "被上訴人", "原告", "被告", "聲請人", "相對人", 
+                "再審原告", "再審被告", "抗告人", "代表人", "訴訟代理人", 
+                "辯護人", "參加人", "輔佐人"
+            ];
+
+            // 1. 尋找分界線 (當事人列表結束的地方)
+            const boundaries = ["右當事人間", "上列當事人間", "當事人間", "上列聲請人", "因.*事件", "對本院", "不服.*決定"];
+            let content = text.replace(/^前置\s*/, '');
+            
+            let splitIndex = -1;
+            for (const b of boundaries) {
+                const re = new RegExp(b);
+                const match = content.match(re);
+                if (match) {
+                    if (splitIndex === -1 || match.index < splitIndex) {
+                        splitIndex = match.index;
+                    }
+                }
+            }
+
+            // 拆分為「當事人區」與「敘述區」
+            let partyText = splitIndex !== -1 ? content.substring(0, splitIndex) : content;
+            let narrativeText = splitIndex !== -1 ? content.substring(splitIndex) : "";
+
+            // 2. 解析當事人
+            const rolePattern = new RegExp(`(${roles.join('|')})`, 'g');
+            const parts = partyText.split(rolePattern);
+            const parties = [];
+            for (let i = 1; i < parts.length; i += 2) {
+                const role = parts[i];
+                let name = parts[i+1] ? parts[i+1].trim() : "";
+                name = name.replace(/[，。；：\s]+$/, '').replace(/^[，。；：\s]+/, '');
+                if (role && name) parties.push({ role, name });
+            }
+
+            return (
+                <div class="space-y-4 mb-8">
+                    {/* 當事人卡片 */}
+                    {parties.length > 0 && (
+                        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                            <div class="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                    <i class="fas fa-users mr-2"></i>訴訟當事人
+                                </span>
+                            </div>
+                            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                                {parties.map((p, idx) => (
+                                    <div key={idx} class="flex items-center group">
+                                        <span class={`
+                                            shrink-0 px-2 py-1 rounded text-[10px] font-black mr-3 w-20 text-center uppercase
+                                            ${['原告', '上訴人', '聲請人', '再審原告', '抗告人'].includes(p.role) ? 'bg-blue-600 text-white' : ''}
+                                            ${['被告', '被上訴人', '相對人', '再審被告'].includes(p.role) ? 'bg-rose-600 text-white' : ''}
+                                            ${['代表人', '訴訟代理人', '辯護人'].includes(p.role) ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-500'}
+                                        `}>
+                                            {p.role}
+                                        </span>
+                                        <span class="text-sm text-slate-700 font-bold group-hover:text-blue-600 transition-colors">
+                                            {p.name}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 背景敘述 (引言格式) */}
+                    {narrativeText && (
+                        <div class="relative pl-6 py-2">
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-slate-200 rounded-full"></div>
+                            <p class="text-sm text-slate-500 italic leading-relaxed">
+                                {narrativeText.trim()}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* 如果什麼都解析不出來的分回退機制 */}
+                    {parties.length === 0 && !narrativeText && (
+                        <div class="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300 text-gray-400 text-sm italic text-center">
+                            無結構化前置資訊
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const HighlightedText = ({ text, term }) => {
+            if (!term || !text) return <>{text}</>;
+            const parts = text.split(term);
+            return (
+                <>
+                    {parts.map((part, i) => (
+                        <React.Fragment key={i}>
+                            {part}
+                            {i < parts.length - 1 && (
+                                <span class="bg-yellow-300 font-bold px-0.5 rounded shadow-sm text-slate-900">
+                                    {term}
+                                </span>
+                            )}
+                        </React.Fragment>
+                    ))}
+                </>
+            );
+        };
+
+        const HelpModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div class="fixed inset-0 z-[60] flex items-center justify-center modal-overlay p-4" onClick={onClose}>
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div class="p-5 border-b bg-slate-900 text-white flex justify-between items-center">
+                            <h3 class="font-bold text-lg"><i class="fas fa-book-reader mr-2"></i>系統操作說明</h3>
+                            <button onClick={onClose} class="text-gray-400 hover:text-white"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                            <section>
+                                <h4 class="text-blue-600 font-bold border-b pb-2 mb-3">資料視覺化</h4>
+                                <p class="text-sm text-gray-600 leading-relaxed">儀表板展示了轉型正義案件在各法院的決定傾向。您可以點擊任何統計圖表來調閱相關的案號清單。</p>
+                            </section>
+                            <section>
+                                <h4 class="text-blue-600 font-bold border-b pb-2 mb-3">法條智慧標示</h4>
+                                <p class="text-sm text-gray-600 leading-relaxed">在閱讀判決時，點擊底部的法條標籤，系統會自動在內文中標示出該法條出現的所有段落。</p>
+                            </section>
+                        </div>
+                        <div class="p-4 bg-gray-50 border-t text-right">
+                            <button onClick={onClose} class="bg-blue-600 text-white px-6 py-2 rounded font-bold">關閉</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Modal = ({ isOpen, onClose, title, items, onSelectCase }) => {
+            if (!isOpen) return null;
+            return (
+                <div class="fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4" onClick={onClose}>
+                    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div class="p-4 border-b flex justify-between items-center bg-slate-50 rounded-t-lg">
+                            <h3 class="font-bold text-lg text-slate-800">{title}</h3>
+                            <button onClick={onClose} class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="flex-1 overflow-y-auto p-4">
+                            <div class="space-y-2">
+                                {items.map((item, idx) => (
+                                    <button key={idx} onClick={() => onSelectCase(item.analysis_meta.path)} class="w-full text-left p-3 rounded border hover:bg-blue-50 hover:border-blue-300 transition-colors group">
+                                        <div class="flex justify-between items-start">
+                                            <span class="font-bold text-blue-700 text-sm group-hover:underline">{item.meta.title}</span>
+                                            <span class="text-xs text-gray-400">{item.meta.date_minguo}</span>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1 truncate">{item.main_text_clean}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const SimpleBarChart = ({ data, colorClass = "bg-blue-500", onBarClick }) => {
+            if (!data || data.length === 0) return <div class="text-xs text-gray-400 italic">無數據</div>;
+            const maxVal = Math.max(...data.map(d => d.value));
+            return (
+                <div class="space-y-1.5">
+                    {data.map((item, idx) => (
+                        <div key={idx} class="flex items-center text-sm group cursor-pointer" onClick={() => onBarClick(item.label)}>
+                            <div class="bar-label mr-2 text-right group-hover:text-blue-600" title={item.label}>{item.label}</div>
+                            <div class="flex-1 h-4 bg-gray-100 rounded overflow-hidden">
+                                <div class={`bar-fill ${colorClass}`} style={{ width: `${(item.value / maxVal) * 100}%` }}></div>
+                            </div>
+                            <div class="w-12 text-right text-xs text-gray-500 ml-2 group-hover:font-bold">{item.value}</div>
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
+        const Dashboard = ({ db, onSelectCase }) => {
+            const [activeCategory, setActiveCategory] = useState(null);
+            const [modalState, setModalState] = useState({ isOpen: false, title: '', items: [] });
+
+            const stats = useMemo(() => {
+                const overview = { totalCases: db.length, totalCourts: new Set(db.map(m => m.analysis_meta.court_normalized)).size, categories: {} };
+                const details = {};
+                db.forEach(item => {
+                    const cat = item.analysis_meta.category_normalized;
+                    const court = item.analysis_meta.court_normalized;
+                    if (!overview.categories[cat]) overview.categories[cat] = 0;
+                    overview.categories[cat]++;
+                    if (!details[cat]) details[cat] = {};
+                    if (!details[cat][court]) details[cat][court] = { total: 0, decisions: {}, mainTexts: {}, items: [] };
+                    details[cat][court].total++;
+                    details[cat][court].items.push(item);
+                    const dType = item.decision_result || '其他';
+                    details[cat][court].decisions[dType] = (details[cat][court].decisions[dType] || 0) + 1;
+                    const mText = item.main_text_clean || '(無主文)';
+                    details[cat][court].mainTexts[mText] = (details[cat][court].mainTexts[mText] || 0) + 1;
+                });
+                return { overview, details };
+            }, [db]);
+
+            const handleChartClick = (court, type, label) => {
+                const categoryData = stats.details[activeCategory][court];
+                let filteredItems = [];
+                if (type === 'decision') filteredItems = categoryData.items.filter(m => (m.decision_result || '其他') === label);
+                else if (type === 'mainText') filteredItems = categoryData.items.filter(m => (m.main_text_clean || '(無主文)') === label);
+                setModalState({ isOpen: true, title: `${court} - ${label}`, items: filteredItems });
+            };
+
+            return (
+                <div class="p-4 md:p-6 max-w-7xl mx-auto">
+                    <Modal isOpen={modalState.isOpen} onClose={() => setModalState({ ...modalState, isOpen: false })} title={modalState.title} items={modalState.items} onSelectCase={(path) => { setModalState({ ...modalState, isOpen: false }); onSelectCase(path); }} />
+                    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8">
+                        <h2 class="text-xl md:text-2xl font-bold text-slate-800"><i class="fas fa-chart-pie mr-3 text-blue-600"></i>數據儀表板</h2>
+                        {activeCategory && <button onClick={() => setActiveCategory(null)} class="text-sm bg-gray-200 px-3 py-2 rounded text-slate-600"><i class="fas fa-arrow-left mr-1"></i> 返回總覽</button>}
+                    </div>
+                    <div class="flex space-x-2 mb-8 overflow-x-auto pb-2 border-b no-scrollbar">
+                        <button onClick={() => setActiveCategory(null)} class={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap ${!activeCategory ? 'bg-slate-800 text-white shadow' : 'bg-white text-gray-600'}`}>總覽</button>
+                        {Object.keys(stats.details || {}).map(cat => (
+                            <button key={cat} onClick={() => setActiveCategory(cat)} class={`px-4 py-2 rounded-t-lg font-bold text-sm whitespace-nowrap ${activeCategory === cat ? 'bg-blue-600 text-white shadow' : 'bg-white text-gray-600'}`}>{cat}</button>
+                        ))}
+                    </div>
+                    {!activeCategory ? (
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {Object.entries(stats.overview?.categories || {}).map(([cat, count]) => (
+                                <div key={cat} onClick={() => setActiveCategory(cat)} class="bg-white rounded-xl p-6 shadow-sm border hover:shadow-md cursor-pointer group">
+                                    <div class="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-2 group-hover:text-blue-600">{cat}</div>
+                                    <div class="text-3xl font-bold text-slate-800">{count} <span class="text-xs font-normal text-gray-400">件判決</span></div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {Object.entries(stats.details[activeCategory]).map(([court, data]) => (
+                                <div key={court} class="bg-white rounded-xl shadow-sm border overflow-hidden">
+                                    <div class="bg-slate-50 px-5 py-3 border-b flex justify-between items-center">
+                                        <h3 class="font-bold text-slate-800">{court}</h3>
+                                        <span class="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-black">{data.total} CASES</span>
+                                    </div>
+                                    <div class="p-5 space-y-8">
+                                        <div>
+                                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 pb-1 border-b">結果分佈</h4>
+                                            <SimpleBarChart data={Object.entries(data.decisions).map(([k,v]) => ({label: k, value: v})).sort((a,b) => b.value - a.value)} colorClass="bg-rose-500" onBarClick={(label) => handleChartClick(court, 'decision', label)} />
+                                        </div>
+                                        <div>
+                                            <h4 class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 pb-1 border-b">常見主文分析</h4>
+                                            <ul class="space-y-1">
+                                                {Object.entries(data.mainTexts).sort((a,b) => b[1] - a[1]).slice(0, 5).map(([text, count], idx) => (
+                                                    <li key={idx} onClick={() => handleChartClick(court, 'mainText', text)} class="text-xs text-gray-600 flex justify-between items-center bg-slate-50 hover:bg-blue-50 p-2 rounded cursor-pointer transition-colors">
+                                                        <span class="mr-2 flex-1 font-mono truncate">{text}</span>
+                                                        <span class="font-bold text-gray-300">{count}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const db = window.JUDGMENT_DB || [];
+            const [view, setView] = useState('dashboard');
+            const [selectedPath, setSelectedPath] = useState(null);
+            const [judgment, setJudgment] = useState(null);
+            const [searchTerm, setSearchTerm] = useState("");
+            const [highlightTerm, setHighlightTerm] = useState(null);
+            const [isSidebarOpen, setSidebarOpen] = useState(false);
+            const [showHelp, setShowHelp] = useState(false);
+
+            useEffect(() => {
+                if(selectedPath) {
+                    setView('reader');
+                    setHighlightTerm(null);
+                    const found = db.find(x => x.analysis_meta.path === selectedPath);
+                    setJudgment(found);
+                    setSidebarOpen(false);
+                }
+            }, [selectedPath, db]);
+
+            const sidebarData = useMemo(() => {
+                const grouped = {};
+                db.forEach(item => {
+                    const name = item.meta.title;
+                    if (searchTerm && !name.includes(searchTerm)) return;
+                    const cat = item.analysis_meta.category_normalized;
+                    const jType = item.analysis_meta.judgment_type_normalized || '其他';
+                    const dResult = item.decision_result || '其他';
+                    if (!grouped[cat]) grouped[cat] = {};
+                    if (!grouped[cat][jType]) grouped[cat][jType] = {};
+                    if (!grouped[cat][jType][dResult]) grouped[cat][jType][dResult] = [];
+                    grouped[cat][jType][dResult].push(item);
+                });
+                return grouped;
+            }, [db, searchTerm]);
+
+            if (db.length === 0) return <div class="flex items-center justify-center h-screen">載入中...</div>;
+
+            return (
+                <div class="flex h-screen overflow-hidden flex-col md:flex-row">
+                    <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+                    <div class="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center z-50 shadow-md">
+                        <div class="font-bold truncate"><i class="fas fa-scale-balanced text-yellow-500 mr-2"></i>轉型正義系統</div>
+                        <div class="flex items-center space-x-3">
+                            <button onClick={() => setShowHelp(true)}><i class="fas fa-question-circle"></i></button>
+                            <button onClick={() => setSidebarOpen(!isSidebarOpen)}><i class={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'}`}></i></button>
+                        </div>
+                    </div>
+                    <div class={`fixed inset-0 z-40 bg-slate-900 text-gray-300 flex flex-col transition-transform md:translate-x-0 md:relative md:w-80 md:flex ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                        <div class="p-4 bg-slate-800 shadow z-10 hidden md:block">
+                            <h1 class="font-bold text-white mb-4 flex justify-between">
+                                <span onClick={() => setView('dashboard')} class="cursor-pointer">轉型正義決定系統</span>
+                                <button onClick={() => setShowHelp(true)} class="text-gray-500"><i class="fas fa-question-circle"></i></button>
+                            </h1>
+                            <div class="flex bg-slate-700 rounded p-1 mb-4">
+                                <button onClick={()=>setView('dashboard')} class={`flex-1 py-1 text-xs font-bold rounded ${view==='dashboard'?'bg-blue-600 text-white':'hover:text-white'}`}>統計</button>
+                                <button onClick={()=>setView('reader')} class={`flex-1 py-1 text-xs font-bold rounded ${view==='reader'?'bg-blue-600 text-white':'hover:text-white'}`}>閱讀</button>
+                            </div>
+                            <input type="text" placeholder="快速檢索..." class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded text-xs text-white" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} />
+                        </div>
+                        <div class="flex-1 overflow-y-auto sidebar-scroll p-2 space-y-1">
+                            {Object.entries(sidebarData).map(([cat, jTypes]) => (
+                                <details key={cat} class="group">
+                                    <summary class="flex items-center p-2 rounded hover:bg-slate-800 text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                                        <i class="fas fa-chevron-right arrow mr-2 opacity-50"></i>{cat}
+                                    </summary>
+                                    <div class="pl-4 mt-1 space-y-1">
+                                        {Object.entries(jTypes).map(([jType, dResults]) => (
+                                            <details key={jType} class="group">
+                                                <summary class="flex items-center p-2 rounded hover:bg-slate-800 text-[10px] font-bold text-blue-400">
+                                                    <i class="fas fa-chevron-right arrow mr-2"></i>{jType}
+                                                </summary>
+                                                <div class="pl-4 mt-1 space-y-1">
+                                                    {Object.entries(dResults).map(([dResult, items]) => (
+                                                        <details key={dResult} class="group">
+                                                            <summary class="flex items-center p-2 rounded hover:bg-slate-800 text-[10px] text-gray-400">
+                                                                <i class="fas fa-chevron-right arrow mr-2"></i>{dResult} ({items.length})
+                                                            </summary>
+                                                            <div class="pl-4 mt-1 space-y-0.5 border-l border-slate-700 ml-2">
+                                                                {items.map(item => (
+                                                                    <button key={item.analysis_meta.path} onClick={()=>setSelectedPath(item.analysis_meta.path)} class={`w-full text-left text-[10px] px-3 py-1.5 rounded truncate transition-colors ${selectedPath === item.analysis_meta.path ? 'bg-blue-900 text-blue-200' : 'text-gray-500 hover:text-gray-300'}`}>{item.meta.title}</button>
+                                                                ))}
+                                                            </div>
+                                                        </details>
+                                                    ))}
+                                                </div>
+                                            </details>
+                                        ))}
+                                    </div>
+                                </details>
+                            ))}
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto bg-gray-100 w-full relative">
+                        {view === 'dashboard' ? <Dashboard db={db} onSelectCase={setSelectedPath} /> : (
+                            judgment ? (
+                                <div class="max-w-5xl mx-auto my-4 md:my-8 p-6 md:p-12 bg-white shadow-xl rounded-2xl min-h-[80vh]">
+                                    <div class="flex flex-col md:flex-row md:justify-between md:items-start mb-10 pb-8 border-b-2 border-slate-100">
+                                        <div>
+                                            <div class="flex space-x-2 mb-4">
+                                                <span class="px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded uppercase tracking-widest">{judgment.meta.court}</span>
+                                                <span class="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded uppercase tracking-widest border border-blue-100">{judgment.decision_result}</span>
+                                            </div>
+                                            <h2 class="text-2xl md:text-3xl font-black text-slate-900 leading-tight tracking-tight">{judgment.meta.title}</h2>
+                                        </div>
+                                        <a href={judgment.meta.source_url} target="_blank" class="text-slate-300 hover:text-blue-600 mt-4 md:mt-0 transition-colors"><i class="fas fa-external-link-alt text-2xl"></i></a>
+                                    </div>
+                                    <div class="space-y-12">
+                                        {judgment.sections && Object.entries(judgment.sections).map(([t, c]) => (
+                                            <div key={t}>
+                                                <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center">
+                                                    <span class="w-8 h-px bg-slate-200 mr-4"></span>{t}
+                                                </h3>
+                                                {t === '前置' ? <PrefaceCard text={c} /> : (
+                                                    <div class="text-slate-700 whitespace-pre-wrap leading-[2] text-justify text-base md:text-lg tracking-wide font-medium">
+                                                        <HighlightedText text={c} term={highlightTerm} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {judgment.extracted_laws && judgment.extracted_laws.length > 0 && (
+                                        <div class="mt-20 pt-10 border-t-2 border-slate-100 sticky bottom-4 bg-white/80 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border border-white/50">
+                                            <div class="flex justify-between items-center mb-6">
+                                                <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest">引用法源標示</h4>
+                                                {highlightTerm && <button onClick={() => setHighlightTerm(null)} class="text-xs font-bold text-rose-500 hover:bg-rose-50 px-2 py-1 rounded transition-colors underline">清除高亮</button>}
+                                            </div>
+                                            <div class="flex flex-wrap gap-3">
+                                                {judgment.extracted_laws.map(l => (
+                                                    <button key={l} onClick={() => setHighlightTerm(l)} class={`px-4 py-2 text-xs font-bold rounded-lg border transition-all ${highlightTerm === l ? 'bg-yellow-400 text-slate-900 border-yellow-500 shadow-lg -translate-y-1' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600'}`}>{l}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : <div class="flex flex-col items-center justify-center h-full text-slate-300"><i class="fas fa-balance-scale text-8xl mb-6 opacity-10"></i><p class="font-black uppercase tracking-widest text-sm">Select Document</p></div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
