@@ -121,8 +121,6 @@ async function main() {
 
         // Prepare prompt
         const paragraphs = reasoningText.split('\n').filter(p => p.trim());
-        // Truncate if too long? Flash context is huge (1M), so likely fine. 
-        // But let's check basic sanity.
         if (paragraphs.length === 0) {
              console.log("  -> Empty reasoning. Skipping.");
              continue;
@@ -143,43 +141,54 @@ async function main() {
 判決文本如下：
 ${numberedText}`;
 
-        try {
-            const response = await postGemini(prompt);
-            
-            // Extract text
-            if (response.candidates && response.candidates[0] && response.candidates[0].content) {
-                let rawText = response.candidates[0].content.parts[0].text;
-                rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-                
-                try {
-                    const summaryJson = JSON.parse(rawText);
-                    
-                    // UPDATE & SAVE IMMEDIATELY
-                    // Re-read DB just in case? No, singular writer assumption.
-                    // Update in-memory
-                    db[dbIndex].ai_summary = summaryJson;
-                    
-                    // Write to disk
-                    saveDB(db);
-                    console.log("  -> Success & Saved.");
-                    
-                } catch (jsonErr) {
-                    console.error("  -> JSON Parse Error:", jsonErr.message);
-                    console.error("  -> Raw:", rawText);
-                }
-            } else {
-                console.error("  -> API Error: No candidates.");
-            }
+        let success = false;
+        let retryCount = 0;
+        const maxRetries = 5;
 
-        } catch (apiErr) {
-            console.error("  -> API Request Failed:", apiErr.message);
-            if (apiErr.message.includes('429')) {
-                console.log("  -> Hit rate limit. Pausing extra time...");
-                await sleep(10000);
+        while (!success && retryCount < maxRetries) {
+            try {
+                const response = await postGemini(prompt);
+                
+                // Extract text
+                if (response.candidates && response.candidates[0] && response.candidates[0].content) {
+                    let rawText = response.candidates[0].content.parts[0].text;
+                    rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                    
+                    try {
+                        const summaryJson = JSON.parse(rawText);
+                        db[dbIndex].ai_summary = summaryJson;
+                        saveDB(db);
+                        console.log("  -> Success & Saved.");
+                        success = true;
+                    } catch (jsonErr) {
+                        console.error("  -> JSON Parse Error:", jsonErr.message);
+                        console.error("  -> Raw:", rawText);
+                        break; // Don't retry JSON errors
+                    }
+                } else {
+                    console.error("  -> API Error: No candidates.");
+                    break;
+                }
+
+            } catch (apiErr) {
+                if (apiErr.message.includes('429')) {
+                    retryCount++;
+                    // Try to extract "Please retry in 38.402350949s."
+                    const match = apiErr.message.match(/Please retry in ([\d.]+)s/);
+                    let waitTime = 10000; // Default 10s
+                    if (match && match[1]) {
+                        waitTime = Math.ceil(parseFloat(match[1]) * 1000) + 1000; // Add 1s buffer
+                    }
+                    console.log(`  -> Hit rate limit. Waiting ${Math.round(waitTime/1000)}s before retry ${retryCount}...`);
+                    await sleep(waitTime);
+                } else {
+                    console.error("  -> API Request Failed:", apiErr.message);
+                    break;
+                }
             }
         }
 
-        // Rate limit wait
+        // Base rate limit wait
         if (i < targets.length - 1) {
             await sleep(RPM_DELAY);
         }
