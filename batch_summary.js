@@ -1,9 +1,14 @@
 
+require('dotenv').config();
 const fs = require('fs');
 const https = require('https');
 
 // --- CONFIG ---
-const API_KEY = "AIzaSyCZaSb7T-jBnVKrlhvSiGpTks_HI4gLtI0";
+const API_KEY = process.env.GEMINI_API_KEY;
+if (!API_KEY) {
+    console.error("Error: GEMINI_API_KEY is not set in .env file");
+    process.exit(1);
+}
 const DATA_FILE = './data.js';
 const RPM_DELAY = 5000; // 5 seconds (safety margin for 15 RPM)
 const TARGET_KEYWORDS = ['撤銷', '廢棄'];
@@ -38,7 +43,7 @@ function postGemini(prompt) {
 
         const options = {
             hostname: 'generativelanguage.googleapis.com',
-            path: `/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`,
+            path: `/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${API_KEY}`,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

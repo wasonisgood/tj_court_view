@@ -1,0 +1,15 @@
+{
+  "name": "tj_court_view",
+  "version": "1.0.0",
+  "description": "Transform Justice Court View",
+  "main": "index.js",
+  "scripts": {
+    "summary": "node batch_summary.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.6.1"
+  }
+}
