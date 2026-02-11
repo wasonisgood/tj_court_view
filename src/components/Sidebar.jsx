@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Sidebar = ({ db, searchTerm, setSearchTerm, isOpen, setIsOpen, navigateToCase, selectedId }) => {
+  const navigate = useNavigate();
   const sidebarData = useMemo(() => {
     const grouped = {};
     db.forEach(item => {
@@ -30,6 +32,15 @@ const Sidebar = ({ db, searchTerm, setSearchTerm, isOpen, setIsOpen, navigateToC
           value={searchTerm} 
           onChange={e => setSearchTerm(e.target.value)} 
         />
+        <button 
+          onClick={() => {
+            navigate('/key-cases');
+            if (window.innerWidth < 768) setIsOpen(false);
+          }}
+          className="w-full mt-3 flex items-center p-2 rounded bg-slate-700 hover:bg-slate-600 text-[10px] font-black text-yellow-400 uppercase tracking-widest transition-colors"
+        >
+          <i className="fas fa-star mr-2"></i> 重點案例全覽
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto sidebar-scroll p-2 space-y-1">
         {Object.entries(sidebarData).map(([cat, jTypes]) => (

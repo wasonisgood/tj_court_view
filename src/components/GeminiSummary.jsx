@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const GeminiSummary = ({ text, onClickRef, savedSummary }) => {
+const GeminiSummary = ({ text, onClickRef, savedSummary, processedParagraphs }) => {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState(savedSummary || null);
   const [error, setError] = useState(null);
@@ -13,13 +13,15 @@ const GeminiSummary = ({ text, onClickRef, savedSummary }) => {
     setLoading(true);
     setError(null);
     
-    const paragraphs = text.split('\n').filter(p => p.trim());
-    const numberedText = paragraphs.map((p, i) => `[${i}] ${p}`).join('\n');
+    // Use processedParagraphs if available, fallback to basic splitting
+    const paras = processedParagraphs || text.split('\n').map((p, i) => ({ id: i, content: p }));
+    const filteredParas = paras.filter(p => p.content.trim());
+    const numberedText = filteredParas.map((p) => `[${p.id}] ${p.content}`).join('\n');
 
     const prompt = `你是一個專業的法律助理。請根據以下法院判決的「理由」部分，生成一份重點摘要。
 請遵循以下規則：
 1. 用列點方式說明判決的關鍵爭點、法院的判斷理由、以及最終結論。
-2. 對於每一個摘要點，**必須**具體引用支持該論點的段落編號，格式為 [ref:段落編號]。
+2. 對於每一個摘要點，**必須**具體引用支持該論點的段落編號，格式為 [ref:段落編號]。編號應使用我提供的 [編號] 標記。
 3. 回傳格式必須為單純的 JSON 陣列，不要有 markdown 標記。格式範例：
 [
     { "point": "原告主張...", "refs": [0, 2] },
@@ -57,6 +59,24 @@ ${numberedText}`;
     }
   };
 
+  // Filter out empty items or items referencing only empty paragraphs
+  const displaySummary = summary ? summary.filter(item => {
+    if (!item.point || !item.point.trim()) return false;
+    
+    // If it has refs, check if at least one referenced paragraph has content
+    if (item.refs && item.refs.length > 0 && processedParagraphs) {
+        const hasValidRef = item.refs.some(refId => {
+            const para = processedParagraphs.find(p => p.id === refId || (p.allIds && p.allIds.includes(refId)));
+            return para && para.content.trim();
+        });
+        // If all references point to empty paragraphs, we might still want to show the point
+        // but for now let's be strict as per user request if that's what they meant.
+        // Actually user said: "如果還是空白的那個段落那他應該不要在AI嘉藥的時候把那個段落顯示出來"
+        // This likely means if a paragraph is empty, don't show it as a ref button.
+    }
+    return true;
+  }) : null;
+
   if (!summary && !loading) {
     return (
       <div className="mb-8">
@@ -80,15 +100,22 @@ ${numberedText}`;
       
       {error && <div className="text-red-500 text-sm">{error}</div>}
       
-      {summary && (
+      {displaySummary && (
         <ul className="space-y-4">
-          {summary.map((item, idx) => (
+          {displaySummary.map((item, idx) => (
             <li key={idx} className="flex items-start">
               <span className="bg-indigo-200 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full mr-3 mt-1 shrink-0">{idx + 1}</span>
               <div>
                 <p className="text-slate-800 text-sm leading-relaxed font-medium">
                   {item.point}
-                  {item.refs && item.refs.map(ref => (
+                  {item.refs && item.refs
+                    .filter(refId => {
+                        // Only show ref button if the referenced paragraph has content
+                        if (!processedParagraphs) return true;
+                        const para = processedParagraphs.find(p => p.id === refId || (p.allIds && p.allIds.includes(refId)));
+                        return para && para.content.trim();
+                    })
+                    .map(ref => (
                     <button 
                       key={ref}
                       onClick={() => onClickRef && onClickRef(ref)}

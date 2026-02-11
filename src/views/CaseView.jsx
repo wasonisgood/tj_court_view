@@ -6,6 +6,31 @@ const CaseView = ({ judgment, onBack }) => {
   const [highlightTerm, setHighlightTerm] = useState(null);
   const [showLaws, setShowLaws] = useState(true);
 
+  const processedSections = React.useMemo(() => {
+    if (!judgment || !judgment.sections) return [];
+    const sections = Object.entries(judgment.sections);
+    const result = [];
+    
+    for (const [title, content] of sections) {
+      // Boundary case: '主文' section sometimes contains '事實' or '事實緣'
+      if (title === '主文' && (content.includes('事實緣') || content.includes('\n事實'))) {
+        const factsPattern = /\n?\s*(事實(?:緣)?.*)/s;
+        const match = content.match(factsPattern);
+        
+        if (match) {
+          const factsText = match[1].trim();
+          const mainText = content.replace(match[0], '').trim();
+          
+          if (mainText) result.push(['主文', mainText]);
+          result.push(['事實', factsText]);
+          continue;
+        }
+      }
+      result.push([title, content]);
+    }
+    return result;
+  }, [judgment]);
+
   if (!judgment) return <div className="flex flex-col items-center justify-center h-full text-slate-300"><i className="fas fa-balance-scale text-8xl mb-6 opacity-10"></i><p className="font-black uppercase tracking-widest text-sm">Select Document</p></div>;
 
   return (
@@ -14,7 +39,7 @@ const CaseView = ({ judgment, onBack }) => {
         <div>
           <div className="flex space-x-2 mb-4">
             <button onClick={onBack} className="px-3 py-1 bg-gray-200 text-gray-600 text-[10px] font-black rounded hover:bg-gray-300 transition-colors"><i className="fas fa-arrow-left mr-1"></i> 返回</button>
-            <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded uppercase tracking-widest">{judgment.meta.court}</span>
+            <span className="px-3 py-1 bg-slate-900 text-white text-[10px] font-black rounded uppercase tracking-widest">{judgment.analysis_meta.court_normalized || judgment.meta.court}</span>
             <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded uppercase tracking-widest border border-blue-100">{judgment.decision_result}</span>
             {judgment.ai_summary && <span className="px-3 py-1 bg-yellow-100 text-yellow-700 text-[10px] font-black rounded uppercase tracking-widest border border-yellow-200"><i className="fas fa-star mr-1"></i>重點案例</span>}
           </div>
@@ -23,7 +48,7 @@ const CaseView = ({ judgment, onBack }) => {
         <a href={judgment.meta.source_url} target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-blue-600 mt-4 md:mt-0 transition-colors"><i className="fas fa-external-link-alt text-2xl"></i></a>
       </div>
       <div className="space-y-12">
-        {judgment.sections && Object.entries(judgment.sections).map(([t, c]) => (
+        {processedSections.map(([t, c]) => (
           <div key={t}>
             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-6 flex items-center">
               <span className="w-8 h-px bg-slate-200 mr-4"></span>{t}

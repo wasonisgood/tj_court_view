@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, useNavigate, useParams, useLocation } from '
 import Sidebar from './components/Sidebar';
 import Dashboard from './views/Dashboard';
 import CaseView from './views/CaseView';
+import KeyCasesView from './views/KeyCasesView';
 import HelpModal from './components/ui/HelpModal';
 import { getJudgmentDB } from './utils/data';
 
@@ -58,6 +59,7 @@ function AppContent() {
       <div className="flex-1 overflow-y-auto bg-gray-100 w-full relative">
         <Routes>
           <Route path="/" element={<Dashboard db={db} onSelectCase={navigateToCase} />} />
+          <Route path="/key-cases" element={<KeyCasesView db={db} onSelectCase={navigateToCase} />} />
           <Route path="/case/:id" element={<CaseWrapper db={db} />} />
         </Routes>
       </div>
@@ -74,7 +76,7 @@ const CaseWrapper = ({ db }) => {
     return db.find(x => x.meta.id === decodedId || x.analysis_meta.path === decodedId);
   }, [db, id]);
 
-  return <CaseView judgment={judgment} onBack={() => navigate('/')} />;
+  return <CaseView judgment={judgment} onBack={() => navigate(-1)} />;
 };
 
 function App() {

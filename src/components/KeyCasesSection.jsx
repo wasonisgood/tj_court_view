@@ -1,15 +1,26 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const KeyCasesSection = ({ db, onSelectCase }) => {
+  const navigate = useNavigate();
   const keyCases = useMemo(() => db.filter(item => item.ai_summary).slice(0, 6), [db]);
   if (keyCases.length === 0) return null;
 
   return (
     <div className="mb-12">
-      <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center">
-        <i className="fas fa-star text-yellow-500 mr-2"></i>
-        重點案例 (AI 智慧摘要)
-      </h3>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-bold text-slate-800 flex items-center">
+          <i className="fas fa-star text-yellow-500 mr-2"></i>
+          重點案例 (AI 智慧摘要)
+        </h3>
+        <button 
+          onClick={() => navigate('/key-cases')}
+          className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center group"
+        >
+          查看更多
+          <i className="fas fa-chevron-right ml-1 transform group-hover:translate-x-1 transition-transform"></i>
+        </button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {keyCases.map((item, idx) => (
           <div key={idx} onClick={() => onSelectCase(item.meta.id)} className="bg-white rounded-xl shadow-md border-l-4 border-yellow-400 hover:shadow-xl transition-all cursor-pointer group flex flex-col h-full overflow-hidden relative">
