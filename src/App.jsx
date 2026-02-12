@@ -31,18 +31,23 @@ function AppContent() {
     navigate(`/case/${encodeURIComponent(id)}`);
   };
 
-  if (db.length === 0) return <div className="flex items-center justify-center h-screen">載入中...</div>;
+  if (db.length === 0) return <div className="flex items-center justify-center h-screen text-brand-700 font-serif">載入中...</div>;
 
   return (
-    <div className="flex h-screen overflow-hidden flex-col md:flex-row">
+    <div className="flex h-screen overflow-hidden flex-col md:flex-row bg-paper-50">
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       
       {/* Mobile Header */}
-      <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center z-50 shadow-md">
-        <div className="font-bold truncate"><i className="fas fa-scale-balanced text-yellow-500 mr-2"></i>轉型正義系統</div>
-        <div className="flex items-center space-x-3">
-          <button onClick={() => setShowHelp(true)}><i className="fas fa-question-circle"></i></button>
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)}><i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'}`}></i></button>
+      <div className="md:hidden bg-brand-950 text-white p-4 flex justify-between items-center z-50 shadow-md">
+        <div className="font-serif font-bold truncate flex items-center">
+            <span className="w-6 h-6 rounded bg-accent-500 flex items-center justify-center text-brand-950 text-xs mr-2">
+              <i className="fas fa-scale-balanced"></i>
+            </span>
+            轉型正義系統
+        </div>
+        <div className="flex items-center space-x-4">
+          <button onClick={() => setShowHelp(true)} className="text-gray-400 hover:text-white"><i className="fas fa-question-circle"></i></button>
+          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="text-white"><i className={`fas ${isSidebarOpen ? 'fa-times' : 'fa-bars'}`}></i></button>
         </div>
       </div>
 
@@ -56,7 +61,7 @@ function AppContent() {
         selectedId={location.pathname.startsWith('/case/') ? decodeURIComponent(location.pathname.split('/case/')[1]) : null}
       />
 
-      <div className="flex-1 overflow-y-auto bg-gray-100 w-full relative">
+      <div className="flex-1 overflow-y-auto bg-paper-50 w-full relative custom-scrollbar">
         <Routes>
           <Route path="/" element={<Dashboard db={db} onSelectCase={navigateToCase} />} />
           <Route path="/key-cases" element={<KeyCasesView db={db} onSelectCase={navigateToCase} />} />

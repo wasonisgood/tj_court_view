@@ -1,1 +1,80 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans TC", system-ui, sans-serif;
+  --font-serif: "Merriweather", "Noto Serif TC", serif;
+  
+  /* 精煉後的法律專業色盤 */
+  --color-brand-950: #0a0e17; /* 墨黑 - 用於最深背景 */
+  --color-brand-900: #1a202c; /* 深海藍 - 用於標題與強調 */
+  --color-brand-800: #2d3748; /* 碳黑 */
+  --color-brand-700: #4a5568;
+  --color-brand-400: #718096;
+  --color-brand-300: #a0aec0;
+  --color-brand-200: #e2e8f0;
+  --color-brand-100: #edf2f7;
+  --color-brand-50: #f8fafc;
+  
+  --color-accent-500: #c5a065; /* 古典金 - 象徵權威與重點 */
+  --color-accent-600: #b08d55;
+  --color-accent-400: #d4b483;
+  --color-accent-100: #f3ece0;
+  --color-accent-50: #f9f6f1;
+  
+  --color-paper-50: #fcfbf9; /* 暖質紙張色 */
+  --color-paper-100: #f7f5f2;
+  --color-paper-200: #eaddcf;
+  --color-paper-300: #d6c4b0;
+}
+
+@layer base {
+  body {
+    @apply bg-paper-50 text-brand-900 font-sans antialiased;
+    /* 全域文字反白優化：使用半透明的古典金，閱讀不刺眼 */
+    ::selection {
+      @apply bg-accent-500/30 text-brand-950;
+    }
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight text-brand-950;
+  }
+
+  /* 針對 Firefox 的反白樣式 */
+  ::-moz-selection {
+    @apply bg-accent-500/30 text-brand-950;
+  }
+}
+
+/* 高級感捲動條優化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-brand-200 rounded-full border-2 border-transparent bg-clip-padding transition-colors;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-accent-400;
+}
+
+/* 專業過渡動畫 */
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 修復細節：讓所有按鈕在點擊時有微小的沉降感 */
+button:active {
+  transform: translateY(1px);
+}

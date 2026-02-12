@@ -13,9 +13,9 @@ const HighlightedText = ({ text, term }) => {
       <>
         {parts.map((part, i) => 
           regex.test(part) ? (
-            <span key={i} className="bg-yellow-300 text-slate-900 font-bold px-0.5 rounded box-decoration-clone">
+            <mark key={i} className="bg-accent-500/40 text-brand-950 font-bold px-0.5 rounded-sm box-decoration-clone transition-colors shadow-[0_0_10px_rgba(197,160,101,0.2)]">
               {part}
-            </span>
+            </mark>
           ) : (
             <React.Fragment key={i}>{part}</React.Fragment>
           )

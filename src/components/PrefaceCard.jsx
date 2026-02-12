@@ -1,91 +1,98 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 const PrefaceCard = ({ text }) => {
-  if (!text) return null;
+  const metadata = useMemo(() => {
+    const lines = text.split('\n');
+    const data = {};
+    const otherLines = [];
+    
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      
+      if (trimmed.startsWith('【裁判字號】')) data.id = trimmed.replace('【裁判字號】', '');
+      else if (trimmed.startsWith('【裁判日期】')) data.date = trimmed.replace('【裁判日期】', '');
+      else if (trimmed.startsWith('【裁判案由】')) data.cause = trimmed.replace('【裁判案由】', '');
+      else otherLines.push(trimmed);
+    });
+    
+    return { data, otherLines };
+  }, [text]);
 
-  const roles = [
-    "上訴人", "被上訴人", "原告", "被告", "聲請人", "相對人", 
-    "再審原告", "再審被告", "抗告人", "代表人", "訴訟代理人", 
-    "辯護人", "參加人", "輔佐人"
-  ];
-
-  // 1. Find boundaries
-  const boundaries = ["右當事人間", "上列當事人間", "當事人間", "上列聲請人", "因.*事件", "對本院", "不服.*決定"];
-  let content = text.replace(/^前置\s*/, '');
-  
-  let splitIndex = -1;
-  for (const b of boundaries) {
-    const re = new RegExp(b);
-    const match = content.match(re);
-    if (match) {
-      if (splitIndex === -1 || match.index < splitIndex) {
-        splitIndex = match.index;
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
       }
     }
-  }
+  };
 
-  // Split
-  let partyText = splitIndex !== -1 ? content.substring(0, splitIndex) : content;
-  let narrativeText = splitIndex !== -1 ? content.substring(splitIndex) : "";
-
-  // 2. Parse parties
-  const rolePattern = new RegExp(`(${roles.join('|')})`, 'g');
-  const parts = partyText.split(rolePattern);
-  const parties = [];
-  for (let i = 1; i < parts.length; i += 2) {
-    const role = parts[i];
-    let name = parts[i+1] ? parts[i+1].trim() : "";
-    name = name.replace(/[，。；：\s]+$/, '').replace(/^[，。；：\s]+/, '');
-    if (role && name) parties.push({ role, name });
-  }
+  const item = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0 }
+  };
 
   return (
-    <div className="space-y-4 mb-8">
-      {/* Party Card */}
-      {parties.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-between items-center">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-              <i className="fas fa-users mr-2"></i>訴訟當事人
-            </span>
-          </div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
-            {parties.map((p, idx) => (
-              <div key={idx} className="flex items-center group">
+    <motion.div 
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="bg-paper-100/50 rounded-sm p-8 md:p-10 border border-brand-100 shadow-inner relative overflow-hidden mb-12"
+    >
+      <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none select-none">
+        <i className="fas fa-file-signature text-[120px] text-brand-900 -rotate-12"></i>
+      </div>
+      
+      {/* Meta Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10 border-b border-brand-200 pb-8 relative z-10">
+        {metadata.data.id && (
+          <motion.div variants={item} className="flex flex-col">
+            <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest mb-2 font-sans">Index Number / 裁判字號</span>
+            <span className="font-mono font-bold text-brand-900 text-lg leading-tight">{metadata.data.id}</span>
+          </motion.div>
+        )}
+        {metadata.data.date && (
+          <motion.div variants={item} className="flex flex-col">
+            <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest mb-2 font-sans">Judgment Date / 裁判日期</span>
+            <span className="font-mono font-bold text-brand-900 text-lg leading-tight">{metadata.data.date}</span>
+          </motion.div>
+        )}
+        {metadata.data.cause && (
+          <motion.div variants={item} className="flex flex-col">
+            <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest mb-2 font-sans">Cause of Action / 案由</span>
+            <span className="font-serif font-bold text-accent-700 text-lg leading-tight">{metadata.data.cause}</span>
+          </motion.div>
+        )}
+      </div>
+      
+      {/* Parties involved */}
+      <motion.div variants={item} className="space-y-4 font-serif leading-relaxed text-brand-900 relative z-10">
+        {metadata.otherLines.map((line, idx) => {
+          const roleMatch = line.match(/^(原\s*告|被\s*告|上\s*訴\s*人|被\s*上\s*訴\s*人|聲\s*請\s*人|相對人)/);
+          if (roleMatch) {
+            const role = roleMatch[0].replace(/\s+/g, '');
+            const isPlaintiff = ['原告', '上訴人', '聲請人'].includes(role);
+            const isDefendant = ['被告', '被上訴人', '相對人'].includes(role);
+            
+            return (
+              <div key={idx} className="flex flex-col sm:flex-row sm:items-baseline group">
                 <span className={`
-                  shrink-0 px-2 py-1 rounded text-[10px] font-black mr-3 w-20 text-center uppercase
-                  ${['原告', '上訴人', '聲請人', '再審原告', '抗告人'].includes(p.role) ? 'bg-blue-600 text-white' : ''}
-                  ${['被告', '被上訴人', '相對人', '再審被告'].includes(p.role) ? 'bg-rose-600 text-white' : ''}
-                  ${['代表人', '訴訟代理人', '辯護人'].includes(p.role) ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-500'}
+                  font-bold min-w-[6em] mb-1 sm:mb-0 transition-colors
+                  ${isPlaintiff ? 'text-brand-900' : isDefendant ? 'text-rose-800' : 'text-brand-500'}
                 `}>
-                  {p.role}
+                  {roleMatch[0]}
                 </span>
-                <span className="text-sm text-slate-700 font-bold group-hover:text-blue-600 transition-colors">
-                  {p.name}
-                </span>
+                <span className="flex-1 text-brand-800 group-hover:text-brand-950 transition-colors">{line.substring(roleMatch[0].length)}</span>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Narrative */}
-      {narrativeText && (
-        <div className="relative pl-6 py-2">
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-200 rounded-full"></div>
-          <p className="text-sm text-slate-500 italic leading-relaxed">
-            {narrativeText.trim()}
-          </p>
-        </div>
-      )}
-
-      {/* Fallback */}
-      {parties.length === 0 && !narrativeText && (
-        <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300 text-gray-400 text-sm italic text-center">
-          無結構化前置資訊
-        </div>
-      )}
-    </div>
+            );
+          }
+          return <div key={idx} className="text-brand-500/80 italic text-sm border-l-2 border-brand-100 pl-4 py-1">{line}</div>;
+        })}
+      </motion.div>
+    </motion.div>
   );
 };
 
