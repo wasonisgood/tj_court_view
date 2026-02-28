@@ -4,10 +4,25 @@ const GeminiSummary = ({ text, onClickRef, savedSummary, processedParagraphs }) 
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState(savedSummary || null);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (savedSummary) setSummary(savedSummary);
   }, [savedSummary]);
+
+  const handleCopy = () => {
+    if (!summary) return;
+    
+    const textToCopy = summary
+      .filter(item => item.point && item.point.trim())
+      .map((item, idx) => `${idx + 1}. ${item.point}`)
+      .join('\n');
+      
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const handleSummarize = async () => {
     setLoading(true);
@@ -89,6 +104,16 @@ ${numberedText}`;
           Gemini 智慧摘要
         </h3>
         <div className="flex items-center space-x-3">
+            {summary && !loading && (
+              <button 
+                onClick={handleCopy}
+                className="flex items-center space-x-1.5 px-3 py-1 rounded bg-accent-500/10 hover:bg-accent-500/20 text-accent-700 transition-colors border border-accent-200"
+                title="複製無格式摘要"
+              >
+                <i className={`fas ${copied ? 'fa-check' : 'fa-copy'} text-xs`}></i>
+                <span className="text-[10px] font-bold uppercase tracking-wider">{copied ? '已複製' : '無格式複製'}</span>
+              </button>
+            )}
             {loading && <span className="text-accent-600 text-sm animate-pulse font-mono"><i className="fas fa-circle-notch fa-spin mr-2"></i>ANALYZING...</span>}
             {savedSummary && <span className="text-[10px] bg-brand-900 text-white px-2 py-1 rounded uppercase tracking-widest font-sans">Cached</span>}
         </div>

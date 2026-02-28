@@ -12,7 +12,18 @@ const Sidebar = ({ db, searchTerm, setSearchTerm, isOpen, setIsOpen, navigateToC
       
       const cat = item.analysis_meta.category_normalized;
       const jType = item.analysis_meta.judgment_type_normalized || '其他';
-      const dResult = item.decision_result || '其他';
+      let dResult = item.decision_result || '其他';
+      
+      // Fix for judgments where "撤銷原判/決定" or "聲請駁回" incorrectly includes dismissals
+      if (jType === '判決' && (dResult === '撤銷原判/決定' || dResult === '聲請駁回')) {
+        if (item.main_text_clean) {
+          if (item.main_text_clean.includes('原告之訴駁回')) {
+            dResult = '原告之訴駁回';
+          } else if (item.main_text_clean.includes('再審之訴駁回')) {
+            dResult = '再審之訴駁回';
+          }
+        }
+      }
       
       if (!grouped[cat]) grouped[cat] = {};
       if (!grouped[cat][jType]) grouped[cat][jType] = {};
