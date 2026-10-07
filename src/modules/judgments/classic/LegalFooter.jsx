@@ -93,7 +93,7 @@ const LegalFooter = ({ text }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-x-10 gap-y-10 mb-12">
             {judges.map((person, idx) => (
               <div key={idx} className="flex items-center space-x-5 group">
                 <div className="w-12 h-12 rounded-full bg-paper-100 flex items-center justify-center text-brand-300 group-hover:bg-accent-50 group-hover:text-accent-600 transition-all duration-300 border border-brand-50 shadow-inner">
@@ -101,7 +101,7 @@ const LegalFooter = ({ text }) => {
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-accent-600 uppercase tracking-widest mb-1 font-sans opacity-70">{person.role}</p>
-                  <p className="text-xl font-black text-brand-900 tracking-[0.1em] font-classic group-hover:text-accent-700 transition-colors">{person.name}</p>
+                  <p className="text-xl font-black text-brand-900 tracking-[0.1em] font-classic whitespace-nowrap group-hover:text-accent-700 transition-colors">{person.name}</p>
                 </div>
               </div>
             ))}

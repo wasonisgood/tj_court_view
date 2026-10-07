@@ -1,5 +1,11 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { ROLES } from './formatPreface';
+
+// 稱謂可能夾空白（「原 告」），長的稱謂排在前面，避免「被上訴人」被當成「上訴人」
+const ROLE_LINE_RE = new RegExp(`^(${ROLES.map(r => r.split('').join('\\s*')).join('|')})`);
+const PLAINTIFF = ['原告', '上訴人', '聲請人', '聲請覆議人', '聲請覆審人', '再審原告', '抗告人', '請求人', '申請人'];
+const DEFENDANT = ['被告', '被上訴人', '相對人', '再審被告'];
 
 const PrefaceCard = ({ text }) => {
   const metadata = useMemo(() => {
@@ -71,11 +77,11 @@ const PrefaceCard = ({ text }) => {
       {/* Parties involved */}
       <motion.div variants={item} className="space-y-4 font-classic leading-relaxed text-brand-900 relative z-10">
         {metadata.otherLines.map((line, idx) => {
-          const roleMatch = line.match(/^(原\s*告|被\s*告|上\s*訴\s*人|被\s*上\s*訴\s*人|聲\s*請\s*人|相對人)/);
+          const roleMatch = line.match(ROLE_LINE_RE);
           if (roleMatch) {
             const role = roleMatch[0].replace(/\s+/g, '');
-            const isPlaintiff = ['原告', '上訴人', '聲請人'].includes(role);
-            const isDefendant = ['被告', '被上訴人', '相對人'].includes(role);
+            const isPlaintiff = PLAINTIFF.includes(role);
+            const isDefendant = DEFENDANT.includes(role);
             
             return (
               <div key={idx} className="flex flex-col sm:flex-row sm:items-baseline group">
