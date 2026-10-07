@@ -10,6 +10,33 @@
   --color-brand-dark: #1c1917;
   --color-brand-bg: #fafaf9;
 
+  /* 判決閱讀頁沿用原版設計的色盤與字體 */
+  --font-classic: "Merriweather", "Noto Serif TC", serif;
+  --color-brand-950: #0a0e17;
+  --color-brand-900: #1a202c;
+  --color-brand-800: #2d3748;
+  --color-brand-700: #4a5568;
+  --color-brand-600: #5a6578;
+  --color-brand-500: #64748b;
+  --color-brand-400: #718096;
+  --color-brand-300: #a0aec0;
+  --color-brand-200: #e2e8f0;
+  --color-brand-100: #edf2f7;
+  --color-brand-50: #f8fafc;
+  --color-accent-800: #7d6337;
+  --color-accent-700: #977a48;
+  --color-accent-600: #b08d55;
+  --color-accent-500: #c5a065;
+  --color-accent-400: #d4b483;
+  --color-accent-300: #e2cba6;
+  --color-accent-200: #ecdcc2;
+  --color-accent-100: #f3ece0;
+  --color-accent-50: #f9f6f1;
+  --color-paper-50: #fcfbf9;
+  --color-paper-100: #f7f5f2;
+  --color-paper-200: #eaddcf;
+  --color-paper-300: #d6c4b0;
+
 }
 
 /* 圖表色：參考 dataviz 驗證過的分類色序，固定順序、依條例指派，不因篩選改色。
@@ -49,8 +76,10 @@
   .reading { @apply font-serif text-[17px] leading-[2] text-stone-800; }
 }
 
-/* 標記法條或關鍵字 */
-mark { background: rgb(180 151 90 / 0.28); color: inherit; padding: 0 1px; }
+/* 標記法條或關鍵字（放在 base layer，讓元件上的 class 可以覆寫） */
+@layer base {
+  mark { background: rgb(180 151 90 / 0.28); color: inherit; padding: 0 1px; }
+}
 
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
