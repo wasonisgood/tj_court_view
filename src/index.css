@@ -1,80 +1,62 @@
 @import "tailwindcss";
 
+/* 色彩沿用李怡俐老師個人網站（yi-lee-site）的石墨＋金色系，讓兩個系統看起來是同一套 */
 @theme {
   --font-sans: "Inter", "Noto Sans TC", system-ui, sans-serif;
-  --font-serif: "Merriweather", "Noto Serif TC", serif;
-  
-  /* 精煉後的法律專業色盤 */
-  --color-brand-950: #0a0e17; /* 墨黑 - 用於最深背景 */
-  --color-brand-900: #1a202c; /* 深海藍 - 用於標題與強調 */
-  --color-brand-800: #2d3748; /* 碳黑 */
-  --color-brand-700: #4a5568;
-  --color-brand-400: #718096;
-  --color-brand-300: #a0aec0;
-  --color-brand-200: #e2e8f0;
-  --color-brand-100: #edf2f7;
-  --color-brand-50: #f8fafc;
-  
-  --color-accent-500: #c5a065; /* 古典金 - 象徵權威與重點 */
-  --color-accent-600: #b08d55;
-  --color-accent-400: #d4b483;
-  --color-accent-100: #f3ece0;
-  --color-accent-50: #f9f6f1;
-  
-  --color-paper-50: #fcfbf9; /* 暖質紙張色 */
-  --color-paper-100: #f7f5f2;
-  --color-paper-200: #eaddcf;
-  --color-paper-300: #d6c4b0;
+  --font-serif: "Noto Serif TC", "Songti TC", serif;
+
+  --color-brand-gold: #b4975a;
+  --color-brand-gold-dark: #8a7140;
+  --color-brand-dark: #1c1917;
+  --color-brand-bg: #fafaf9;
+
+}
+
+/* 圖表色：參考 dataviz 驗證過的分類色序，固定順序、依條例指派，不因篩選改色。
+   放在 :root 而非 @theme，避免 Tailwind 把沒有被 class 用到的變數移除 */
+:root {
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #e87ba4;
+  --color-series-6: #008300;
+  --color-series-7: #4a3aa7;
+  --color-favorable: #2a78d6;
+  --color-unfavorable: #eb6834;
 }
 
 @layer base {
+  html, body, #root { height: 100%; }
   body {
-    @apply bg-paper-50 text-brand-900 font-sans antialiased;
-    /* 全域文字反白優化：使用半透明的古典金，閱讀不刺眼 */
-    ::selection {
-      @apply bg-accent-500/30 text-brand-950;
-    }
+    @apply bg-brand-bg text-stone-800 font-sans antialiased;
   }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-serif tracking-tight text-brand-950;
-  }
-
-  /* 針對 Firefox 的反白樣式 */
-  ::-moz-selection {
-    @apply bg-accent-500/30 text-brand-950;
-  }
+  ::selection { background: rgb(180 151 90 / 0.3); }
+  h1, h2, h3, h4 { @apply font-serif text-brand-dark; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
 }
 
-/* 高級感捲動條優化 */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@layer components {
+  .card { @apply bg-white border border-stone-200 rounded-sm; }
+  .field { @apply w-full px-3 py-2 text-sm bg-white border border-stone-300 rounded-sm outline-none focus:border-brand-gold; }
+  .label { @apply block text-xs font-medium text-stone-500 mb-1; }
+  .btn { @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm border border-stone-300 bg-white text-stone-700 hover:bg-stone-50 transition-colors; }
+  .btn-primary { @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm bg-brand-dark text-white hover:bg-stone-700 transition-colors; }
+  .btn-gold { @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-sm bg-brand-gold text-brand-dark font-medium hover:bg-brand-gold-dark hover:text-white transition-colors; }
+  .chip { @apply inline-flex items-center px-2 py-0.5 text-xs rounded-sm border border-stone-200 bg-stone-50 text-stone-600; }
+  .link { @apply text-brand-gold-dark underline-offset-2 hover:underline; }
+  .reading { @apply font-serif text-[17px] leading-[2] text-stone-800; }
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
+/* 標記法條或關鍵字 */
+mark { background: rgb(180 151 90 / 0.28); color: inherit; padding: 0 1px; }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-brand-200 rounded-full border-2 border-transparent bg-clip-padding transition-colors;
-}
+.scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
+.scroll-thin::-webkit-scrollbar-track { background: transparent; }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-accent-400;
-}
-
-/* 專業過渡動畫 */
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* 修復細節：讓所有按鈕在點擊時有微小的沉降感 */
-button:active {
-  transform: translateY(1px);
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { overflow: visible !important; }
 }
