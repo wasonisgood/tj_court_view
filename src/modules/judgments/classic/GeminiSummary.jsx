@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { localPref } from '../../../core/backend';
+import { ListOrdered } from 'lucide-react';
 
 // 原版的摘要區塊外觀；產生的摘要改存到研究標註（裁判資料本身唯讀）
 const GeminiSummary = ({ onClickRef, savedSummary, processedParagraphs, onSave, canEdit }) => {
@@ -58,12 +59,9 @@ ${numberedText}`;
     if (!canEdit || !apiKey) return null;
     return (
       <div className="mb-8 pl-4 md:pl-0 no-print">
-        <button onClick={handleSummarize} className="group relative overflow-hidden bg-brand-900 text-white px-8 py-4 rounded font-classic font-bold shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5">
-          <span className="relative z-10 flex items-center">
-            <i className="fas fa-magic mr-3 text-accent-400 group-hover:text-accent-300 transition-colors"></i>
-            生成 AI 判決摘要
-          </span>
-          <div className="absolute inset-0 bg-accent-600 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-500 ease-out"></div>
+        <button onClick={handleSummarize} className="btn font-classic">
+          <ListOrdered className="w-4 h-4 text-accent-600" />
+          產生理由摘要草稿
         </button>
         {error && <div className="text-rose-600 text-sm font-bold bg-rose-50 p-3 rounded border border-rose-200 mt-4">{error}</div>}
       </div>
@@ -71,22 +69,19 @@ ${numberedText}`;
   }
 
   return (
-    <div className="mb-10 bg-paper-100 rounded-lg p-6 md:p-8 border border-accent-200 relative overflow-hidden">
+    <div className="mb-10 bg-paper-100 rounded-sm p-6 md:p-8 border border-accent-200 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-1 h-full bg-accent-500"></div>
       <div className="flex justify-between items-center mb-6 border-b border-accent-200/50 pb-4">
         <h3 className="font-classic font-bold text-brand-900 text-lg flex items-center">
-          <i className="fas fa-robot mr-3 text-accent-600"></i>
-          Gemini 智慧摘要
+          理由摘要<span className="ml-2 text-xs font-sans font-normal text-brand-400">草稿</span>
         </h3>
         <div className="flex items-center space-x-3">
           {summary && !loading && (
-            <button onClick={handleCopy} className="flex items-center space-x-1.5 px-3 py-1 rounded bg-accent-500/10 hover:bg-accent-500/20 text-accent-700 transition-colors border border-accent-200" title="複製無格式摘要">
-              <i className={`fas ${copied ? 'fa-check' : 'fa-copy'} text-xs`}></i>
-              <span className="text-[10px] font-bold uppercase tracking-wider">{copied ? '已複製' : '無格式複製'}</span>
+            <button onClick={handleCopy} className="text-xs text-accent-700 hover:underline" title="複製純文字摘要">
+              {copied ? '已複製' : '複製純文字'}
             </button>
           )}
-          {loading && <span className="text-accent-600 text-sm animate-pulse font-mono"><i className="fas fa-circle-notch fa-spin mr-2"></i>ANALYZING...</span>}
-          {summary && <span className="text-[10px] bg-brand-900 text-white px-2 py-1 rounded uppercase tracking-widest font-sans">Cached</span>}
+          {loading && <span className="text-accent-600 text-sm">整理中…</span>}
         </div>
       </div>
       {error && <div className="text-rose-600 text-sm font-bold bg-rose-50 p-3 rounded border border-rose-200 mb-4">{error}</div>}
@@ -94,7 +89,7 @@ ${numberedText}`;
         <ul className="space-y-6">
           {displaySummary.map((item, idx) => (
             <li key={idx} className="flex items-start group">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-900 text-accent-500 text-xs font-bold mr-4 shrink-0 mt-0.5 font-mono border border-brand-700 shadow-sm">{idx + 1}</span>
+              <span className="w-6 mr-3 shrink-0 pt-1 text-sm text-accent-700 font-classic tabular-nums">{idx + 1}.</span>
               <div className="flex-1">
                 <p className="text-brand-900 text-lg leading-relaxed font-classic">{item.point}</p>
                 {item.refs && item.refs.length > 0 && (
@@ -105,9 +100,8 @@ ${numberedText}`;
                         return para && para.content.trim();
                       })
                       .map(ref => (
-                        <button key={ref} onClick={() => onClickRef(ref)} className="inline-flex items-center text-[10px] uppercase tracking-wider font-bold text-brand-400 hover:text-accent-600 transition-colors group/btn">
-                          <i className="fas fa-paragraph mr-1 text-accent-400 group-hover/btn:text-accent-600"></i>
-                          <span className="border-b border-dotted border-brand-300 group-hover/btn:border-accent-500">Ref {ref + 1}</span>
+                        <button key={ref} onClick={() => onClickRef(ref)} className="text-xs text-brand-400 hover:text-accent-700 border-b border-dotted border-brand-300">
+                          第 {ref + 1} 段
                         </button>
                       ))}
                   </div>
@@ -117,7 +111,7 @@ ${numberedText}`;
           ))}
         </ul>
       )}
-      <p className="text-[11px] text-brand-400 mt-6">摘要由語言模型自動整理，未經人工核對，引用前請對照原文。</p>
+      <p className="text-[11px] text-brand-400 mt-6">機器整理的草稿，未經人工核對，引用前請對照原文。</p>
     </div>
   );
 };

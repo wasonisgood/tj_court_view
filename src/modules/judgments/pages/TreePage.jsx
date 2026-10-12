@@ -8,7 +8,7 @@ import { DIMS, PRESETS, levelsOf } from '../components/treeDims';
 
 const TreePage = () => <DataGate><Body /></DataGate>;
 
-const detailOf = (r) => r.coding?.['法院有利理由分析'] || r.coding?.['判斷理由摘錄'] || Object.values(r.caseAnalysis || {})[0]?.['法院判斷原因'] || r.mainText;
+const detailOf = (r) => r.coding?.['法院有利理由分析'] || r.coding?.['判斷理由摘錄'] || Object.values(r.caseAnalysis || {})[0]?.['法院判斷原因'] || Object.values(r.caseAnalysis || {})[0]?.['理由'] || r.mainText;
 
 const Body = () => {
   const { records } = useJudgments();

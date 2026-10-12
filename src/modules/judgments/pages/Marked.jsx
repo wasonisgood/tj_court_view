@@ -52,7 +52,7 @@ const Body = () => {
     <div>
       <PageHeader
         kicker="轉型正義裁判" title="重點與標註"
-        description="老師與研究助理在案件頁留下的標記、筆記與歸類疑義集中在這裡，方便討論時逐一檢視。"
+        description="在案件頁留下的標記、筆記與歸類疑義都集中在這裡，方便討論時逐一檢視。"
         actions={<ExportButton items={groups[tab]} filename={tabs.find(t => t.id === tab).label} />}
       />
       <Tabs tabs={tabs} value={tab} onChange={setTab} />

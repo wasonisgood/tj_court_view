@@ -33,6 +33,9 @@ jobs:
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           # 選填：設定後筆記與文獻改存 Firestore 並以 Google 帳號登入；未設定則存在各自瀏覽器
           VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
+          # 網站正式網址：canonical、sitemap 與結構化資料使用
+          VITE_SITE_URL: https://wasonisgood.github.io/tj_court_view
+          SITE_URL: https://wasonisgood.github.io/tj_court_view
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

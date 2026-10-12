@@ -75,7 +75,7 @@ const ConsoleLayout = () => {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-brand-dark flex flex-col transform transition-transform md:relative md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="px-5 py-5 border-b border-stone-700/60">
           <div className="font-serif text-lg font-bold text-white leading-snug">{settings.siteName}</div>
-          <div className="text-xs text-stone-400 mt-1">{settings.owner}</div>
+          {settings.owner && <div className="text-xs text-stone-400 mt-1">{settings.owner}</div>}
         </div>
 
         <nav className="flex-1 overflow-y-auto scroll-thin p-3 space-y-1" onClick={e => e.target.closest('a') && setOpen(false)}>
@@ -112,7 +112,7 @@ const ConsoleLayout = () => {
               <label className="flex items-center gap-2 text-xs text-stone-500 select-none">
                 <button
                   role="switch" aria-checked={autoSave} onClick={() => setAutoSave(!autoSave)}
-                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${autoSave ? 'bg-green-600' : 'bg-stone-300'}`}
+                  className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${autoSave ? 'bg-brand-gold-dark' : 'bg-stone-300'}`}
                 >
                   <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${autoSave ? 'translate-x-4' : ''}`} />
                 </button>

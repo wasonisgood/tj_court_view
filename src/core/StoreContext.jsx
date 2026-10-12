@@ -8,6 +8,21 @@ export const useStore = () => useContext(StoreContext);
 
 const AUTOSAVE_DELAY = 1500;
 
+// 舊版預設值的清理：不再顯示研究室名稱，文獻不再使用「本人著作」標籤
+const RETIRED_OWNER = '李怡俐老師研究室';
+const RETIRED_TAGS = ['本人著作'];
+const migrate = (d) => {
+  if (d.settings.owner === RETIRED_OWNER) d.settings.owner = '';
+  if (Array.isArray(d.literature)) {
+    d.literature = d.literature.map(l => {
+      let n = l;
+      if (l.tags?.some(t => RETIRED_TAGS.includes(t))) n = { ...n, tags: l.tags.filter(t => !RETIRED_TAGS.includes(t)) };
+      if (l.origin === '李怡俐老師個人網站著作目錄') n = { ...n, origin: '作者個人網站著作目錄' };
+      return n;
+    });
+  }
+};
+
 export const StoreProvider = ({ children }) => {
   const [data, setData] = useState(DEFAULT_DATA);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +48,7 @@ export const StoreProvider = ({ children }) => {
         loaded[name] = v ?? DEFAULT_DATA[name];
       }
       loaded.settings = { ...DEFAULT_SETTINGS, ...loaded.settings };
+      migrate(loaded);
       if (alive) {
         setData(loaded);
         setIsLoading(false);
@@ -93,6 +109,7 @@ export const StoreProvider = ({ children }) => {
     const next = {};
     for (const name of COLLECTIONS) next[name] = incoming[name] ?? dataRef.current[name];
     next.settings = { ...DEFAULT_SETTINGS, ...next.settings };
+    migrate(next);
     snapshot('還原或匯入前自動備份');
     setData(next);
     setDirty(new Set(COLLECTIONS));
