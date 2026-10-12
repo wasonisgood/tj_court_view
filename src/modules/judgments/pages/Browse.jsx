@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Search, List, FolderTree, X } from 'lucide-react';
 import { PageHeader, Select } from '../../../ui';
 import { useStore } from '../../../core/StoreContext';
-import { DataGate, useJudgments, STATUTES, short, PERIOD_SHORT, periodIndex } from '../data';
+import { DataGate, useJudgments, STATUTES, short, PERIOD_SHORT, periodIndex, FAVOR_SIDES, TJ_OUTCOMES } from '../data';
 import CaseList, { caseHref } from '../components/CaseList';
 import ExportButton from '../components/ExportButton';
 
@@ -18,7 +18,7 @@ const Body = () => {
   const [texts, setTexts] = useState(null);
   const [progress, setProgress] = useState(null);
   const [qInput, setQInput] = useState(params.get('q') || '');
-  const f = Object.fromEntries(['statute', 'court', 'docType', 'result', 'stance', 'period', 'method', 'tag', 'q', 'view', 'sort'].map(k => [k, params.get(k) || '']));
+  const f = Object.fromEntries(['statute', 'court', 'docType', 'result', 'stance', 'favor', 'tj', 'period', 'method', 'tag', 'q', 'view', 'sort'].map(k => [k, params.get(k) || '']));
   const set = (k, v) => {
     const n = new URLSearchParams(params);
     if (v) n.set(k, v); else n.delete(k);
@@ -39,23 +39,25 @@ const Body = () => {
       && (!f.court || r.court === f.court)
       && (!f.docType || r.docType === f.docType)
       && (!f.result || r.result === f.result)
-      && (!f.stance || (f.stance === '未歸類' ? !r.coding : r.coding?.stance === f.stance))
+      && (!f.stance || r.coding?.stance === f.stance)
+      && (!f.favor || r.favor?.side === f.favor)
+      && (!f.tj || r.favor?.tj === f.tj)
       && (!f.period || periodIndex(r.rocYear) === Number(f.period))
       && (!f.method || r.coding?.['歸類方式'] === f.method)
       && (!f.tag || (annotations[r.id]?.tags || []).includes(f.tag)));
     if (q) {
       const terms = q.split(/\s+/);
       out = out.filter(r => {
-        const hay = [r.title, r.id, r.cause, r.mainText, r.ref, ...Object.values(r.coding || {}),
+        const hay = [r.title, r.id, r.cause, r.mainText, r.ref, ...Object.values(r.coding || {}), r.favor?.who, r.favor?.basis,
           ...Object.values(r.caseAnalysis || {}).flatMap(a => Object.values(a)), annotations[r.id]?.note,
           texts ? Object.values(texts[r.id] || {}).join('') : ''].join('\n');
         return terms.every(t => hay.includes(t));
       });
     }
     return [...out].sort((a, b) => (f.sort === 'old' ? 1 : -1) * ((a.iso || '').localeCompare(b.iso || '')));
-  }, [records, annotations, texts, f.statute, f.court, f.docType, f.result, f.stance, f.period, f.method, f.tag, f.q, f.sort]);
+  }, [records, annotations, texts, f.statute, f.court, f.docType, f.result, f.stance, f.favor, f.tj, f.period, f.method, f.tag, f.q, f.sort]);
 
-  const activeCount = ['statute', 'court', 'docType', 'result', 'stance', 'period', 'method', 'tag', 'q'].filter(k => f[k]).length;
+  const activeCount = ['statute', 'court', 'docType', 'result', 'stance', 'favor', 'tj', 'period', 'method', 'tag', 'q'].filter(k => f[k]).length;
 
   const loadTexts = async () => {
     setProgress(0);
@@ -89,7 +91,9 @@ const Body = () => {
         <Select label="法院" value={f.court} onChange={v => set('court', v)} options={options.courts} />
         <Select label="文書類型" value={f.docType} onChange={v => set('docType', v)} options={options.docTypes} />
         <Select label="裁判結果" value={f.result} onChange={v => set('result', v)} options={options.results} />
-        <Select label="研究歸類" value={f.stance} onChange={v => set('stance', v)} options={['有利', '否定', '未歸類']} />
+        <Select label="有利於" value={f.favor} onChange={v => set('favor', v)} options={FAVOR_SIDES} />
+        <Select label="轉型正義一方" value={f.tj} onChange={v => set('tj', v)} options={TJ_OUTCOMES} />
+        <Select label="228及戒嚴條例歸類" value={f.stance} onChange={v => set('stance', v)} options={['有利', '否定']} />
         <Select label="時期" value={f.period} onChange={v => set('period', v)} options={PERIOD_SHORT.map((p, i) => ({ value: String(i), label: p }))} />
         <Select label="歸類方式" value={f.method} onChange={v => set('method', v)} options={['人工判讀', '規則歸類（抽樣核對）']} />
         <Select label="我的標籤" value={f.tag} onChange={v => set('tag', v)} options={options.tags} />

@@ -57,5 +57,6 @@ const clip = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s || '')
 export const caseDescription = (r, statuteLabel) => {
   const a = Object.values(r.caseAnalysis || {})[0];
   const gist = a?.['事實簡述'] || a?.['爭議處分或請求'] || r.coding?.['案情摘要'] || r.mainText;
-  return clip([r.date, statuteLabel, r.cause && `案由：${r.cause}`, gist && (r.mainText === gist ? `主文：${gist}` : gist)].filter(Boolean).join('｜'), 160);
+  const favor = r.favor && !['互有勝負', '不分勝負'].includes(r.favor.side) ? `有利於${r.favor.who}` : r.favor?.side;
+  return clip([r.date, statuteLabel, favor, r.cause && `案由：${r.cause}`, gist && (r.mainText === gist ? `主文：${gist}` : gist)].filter(Boolean).join('｜'), 160);
 };

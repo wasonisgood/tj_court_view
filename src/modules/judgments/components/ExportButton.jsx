@@ -54,6 +54,12 @@ const ExportButton = ({ items, filename = '裁判清單', label = '匯出 Excel'
           [C[3]]: lang === 'en' ? r.iso : r.date, [C[4]]: tr('statute', r.statute), [C[5]]: r.cause,
           [C[6]]: tr('result', r.result), [C[7]]: r.mainText, [C[8]]: tr('stance', r.coding?.stance || ''), [C[9]]: r.url,
         };
+        if (r.favor) {
+          row[lang === 'en' ? 'Prevailing side' : '有利於（身分）'] = r.favor.side;
+          row[lang === 'en' ? 'Prevailing party' : '有利於'] = r.favor.who;
+          row[lang === 'en' ? 'Transitional-justice side' : '轉型正義一方'] = r.favor.tj;
+          row[lang === 'en' ? 'Basis' : '有利判斷依據'] = r.favor.basis;
+        }
         if (mode === 'coding' && r.coding) {
           Object.entries(r.coding).forEach(([k, v]) => { if (!['stance', 'codingStatute'].includes(k)) row[k] = v; });
         }

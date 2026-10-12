@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
 import HighlightedText from './HighlightedText';
 import GeminiSummary from './GeminiSummary';
 import LegalFooter from './LegalFooter';
@@ -53,30 +52,26 @@ const ParagraphReader = ({ text, pattern, sectionTitle, savedSummary, onSaveSumm
         />
       )}
 
-      <div className="space-y-10">
-        {paragraphs.map((p, idx) => (
-          <motion.div
+      <div className="space-y-6">
+        {paragraphs.map(p => (
+          <div
             id={`p-${sectionTitle}-${p.id}`}
             key={p.id}
-            initial={{ opacity: 0, x: -10 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, margin: '-50px' }}
-            transition={{ duration: 0.5, delay: Math.min(idx * 0.05, 0.3) }}
-            className={`transition-colors duration-1000 rounded ${!p.content.trim() ? 'h-4' : ''}`}
+            className={`transition-colors duration-700 ${!p.content.trim() ? 'h-2' : ''}`}
           >
             {isLegalFooter(p.content) ? (
               <LegalFooter text={p.content} />
             ) : (
-              <div className="text-brand-900 whitespace-pre-wrap leading-[2.2] text-justify text-lg font-classic relative group pl-4 md:pl-0">
+              <div className="text-brand-900 whitespace-pre-wrap leading-[2.1] text-justify text-[17px] font-classic relative">
                 {enableAI && p.content.trim() && (
-                  <span className="absolute -left-6 md:-left-12 top-2 text-[10px] text-brand-200 select-none group-hover:text-accent-500 font-sans font-bold transition-colors w-8 text-right opacity-0 md:opacity-100">
+                  <span className="hidden md:block absolute -left-10 top-1 w-7 text-right text-xs text-brand-300 select-none tabular-nums font-sans">
                     {p.id + 1}
                   </span>
                 )}
                 <HighlightedText text={p.content} pattern={pattern} />
               </div>
             )}
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>

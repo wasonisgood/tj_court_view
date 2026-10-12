@@ -13,7 +13,7 @@ const detailOf = (r) => r.coding?.['法院有利理由分析'] || r.coding?.['�
 const Body = () => {
   const { records } = useJudgments();
   const [params, setParams] = useSearchParams();
-  const presetId = params.get('preset') || 'coding';
+  const presetId = params.get('preset') || 'favor';
   const preset = PRESETS.find(p => p.id === presetId) || PRESETS[0];
   const [custom, setCustom] = useState(null);
   const [list, setList] = useState(null);

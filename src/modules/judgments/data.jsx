@@ -43,6 +43,15 @@ export const periodIndex = (rocYear) => {
 
 export const stanceOf = (r) => r.coding?.stance || null;
 
+// 有利於誰：每件裁判都有 favor（build_data.py 產生）
+export const FAVOR_SIDES = ['請求人／被害人', '國家機關', '政黨及相關組織', '退職政務人員', '其他私人', '互有勝負', '不分勝負'];
+export const FAVOR_COLOR = {
+  '請求人／被害人': 'var(--color-series-1)', '國家機關': 'var(--color-series-2)', '政黨及相關組織': 'var(--color-series-7)',
+  '退職政務人員': 'var(--color-series-5)', '其他私人': '#a8a29e', '互有勝負': 'var(--color-series-4)', '不分勝負': '#d6d3d1',
+};
+export const TJ_OUTCOMES = ['轉型正義一方勝', '轉型正義一方敗', '互有勝負', '不適用'];
+export const TJ_COLOR = { 轉型正義一方勝: 'var(--color-series-3)', 轉型正義一方敗: 'var(--color-unfavorable)', 互有勝負: 'var(--color-series-4)', 不適用: '#d6d3d1' };
+
 // 個案分析：各條例欄位不同，統一取「結果」與「主要類型」
 export const analysisOf = (r, statute) => (statute ? r.caseAnalysis?.[statute] : Object.values(r.caseAnalysis || {})[0]) || null;
 export const outcomeOf = (a) => a?.['勝負歸類'] || a?.['結果'] || null;

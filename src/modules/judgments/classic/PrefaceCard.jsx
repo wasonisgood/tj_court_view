@@ -1,104 +1,31 @@
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { ROLES } from './formatPreface';
 
 // 稱謂可能夾空白（「原 告」），長的稱謂排在前面，避免「被上訴人」被當成「上訴人」
 const ROLE_LINE_RE = new RegExp(`^(${ROLES.map(r => r.split('').join('\\s*')).join('|')})`);
-const PLAINTIFF = ['原告', '上訴人', '聲請人', '聲請覆議人', '聲請覆審人', '再審原告', '抗告人', '請求人', '申請人'];
-const DEFENDANT = ['被告', '被上訴人', '相對人', '再審被告'];
+const AGENT = ['訴訟代理人', '法定代理人', '複代理人', '代理人', '代表人', '輔佐人'];
 
+// 當事人欄：照判決書的寫法，稱謂在左、姓名在右；字號、日期、案由已在卷首，這裡不重複
 const PrefaceCard = ({ text }) => {
-  const metadata = useMemo(() => {
-    const lines = text.split('\n');
-    const data = {};
-    const otherLines = [];
-    
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-      
-      if (trimmed.startsWith('【裁判字號】')) data.id = trimmed.replace('【裁判字號】', '');
-      else if (trimmed.startsWith('【裁判日期】')) data.date = trimmed.replace('【裁判日期】', '');
-      else if (trimmed.startsWith('【裁判案由】')) data.cause = trimmed.replace('【裁判案由】', '');
-      else otherLines.push(trimmed);
-    });
-    
-    return { data, otherLines };
-  }, [text]);
-
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const item = {
-    hidden: { opacity: 0, y: 10 },
-    show: { opacity: 1, y: 0 }
-  };
+  const lines = useMemo(() => text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('【')), [text]);
 
   return (
-    <motion.div 
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="bg-paper-100/50 rounded-sm p-8 md:p-10 border border-brand-100 shadow-inner relative overflow-hidden mb-12"
-    >
-      <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none select-none">
-        <i className="fas fa-file-signature text-[120px] text-brand-900 -rotate-12"></i>
-      </div>
-      
-      {/* Meta Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10 border-b border-brand-200 pb-8 relative z-10">
-        {metadata.data.id && (
-          <motion.div variants={item} className="flex flex-col">
-            <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest mb-2 font-sans">Index Number / 裁判字號</span>
-            <span className="font-mono font-bold text-brand-900 text-lg leading-tight">{metadata.data.id}</span>
-          </motion.div>
-        )}
-        {metadata.data.date && (
-          <motion.div variants={item} className="flex flex-col">
-            <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest mb-2 font-sans">Judgment Date / 裁判日期</span>
-            <span className="font-mono font-bold text-brand-900 text-lg leading-tight">{metadata.data.date}</span>
-          </motion.div>
-        )}
-        {metadata.data.cause && (
-          <motion.div variants={item} className="flex flex-col">
-            <span className="text-[10px] font-black text-brand-300 uppercase tracking-widest mb-2 font-sans">Cause of Action / 案由</span>
-            <span className="font-classic font-bold text-accent-700 text-lg leading-tight">{metadata.data.cause}</span>
-          </motion.div>
-        )}
-      </div>
-      
-      {/* Parties involved */}
-      <motion.div variants={item} className="space-y-4 font-classic leading-relaxed text-brand-900 relative z-10">
-        {metadata.otherLines.map((line, idx) => {
-          const roleMatch = line.match(ROLE_LINE_RE);
-          if (roleMatch) {
-            const role = roleMatch[0].replace(/\s+/g, '');
-            const isPlaintiff = PLAINTIFF.includes(role);
-            const isDefendant = DEFENDANT.includes(role);
-            
-            return (
-              <div key={idx} className="flex flex-col sm:flex-row sm:items-baseline group">
-                <span className={`
-                  font-bold min-w-[6em] mb-1 sm:mb-0 transition-colors
-                  ${isPlaintiff ? 'text-brand-900' : isDefendant ? 'text-rose-800' : 'text-brand-500'}
-                `}>
-                  {roleMatch[0]}
-                </span>
-                <span className="flex-1 text-brand-800 group-hover:text-brand-950 transition-colors">{line.substring(roleMatch[0].length)}</span>
-              </div>
-            );
-          }
-          return <div key={idx} className="text-brand-500/80 italic text-sm border-l-2 border-brand-100 pl-4 py-1">{line}</div>;
+    <div className="font-classic text-[17px] leading-loose text-brand-900">
+      <dl className="grid grid-cols-[6.5em_1fr] gap-x-4">
+        {lines.map((line, idx) => {
+          const m = line.match(ROLE_LINE_RE);
+          if (!m) return null;
+          const role = m[0].replace(/\s+/g, '');
+          return (
+            <div key={idx} className="contents">
+              <dt className={AGENT.includes(role) ? 'text-brand-400 pl-4' : 'text-brand-500'}>{role}</dt>
+              <dd className={AGENT.includes(role) ? 'text-brand-700' : ''}>{line.substring(m[0].length).trim()}</dd>
+            </div>
+          );
         })}
-      </motion.div>
-    </motion.div>
+      </dl>
+      {lines.filter(l => !ROLE_LINE_RE.test(l)).map((l, i) => <p key={i} className="mt-4 text-brand-700">{l}</p>)}
+    </div>
   );
 };
 

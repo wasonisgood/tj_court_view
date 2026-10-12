@@ -5,7 +5,7 @@ import { caseDescription } from '../../../core/pageMeta';
 import { ArrowLeft, ExternalLink, FileText, Star, Flag, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { useStore } from '../../../core/StoreContext';
 import { useDialog, today } from '../../../ui';
-import { DataGate, useJudgments, short } from '../data';
+import { DataGate, useJudgments, short, FAVOR_COLOR, TJ_COLOR } from '../data';
 import { caseHref } from '../components/CaseList';
 import { RefText } from '../components/Notes';
 import { lawPattern } from '../components/lawMatch';
@@ -43,10 +43,7 @@ const splitSections = (sections) => {
 };
 
 const SectionTitle = ({ children }) => (
-  <div className="flex items-center mb-8">
-    <span className="text-xs font-black text-accent-600 uppercase tracking-[0.4em] whitespace-nowrap">{children}</span>
-    <div className="ml-6 h-px bg-gradient-to-r from-gray-200 to-transparent flex-1"></div>
-  </div>
+  <h2 className="font-classic text-xl font-bold text-brand-900 mb-5 pb-2 border-b border-brand-100">{children}</h2>
 );
 
 const Body = () => {
@@ -102,34 +99,31 @@ const Body = () => {
       </div>
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
-        <article id="case-text" className="min-w-0 bg-white shadow-[0_20px_50px_rgba(0,0,0,0.08)] rounded-sm border border-gray-100 p-6 md:p-12 space-y-12">
+        <article id="case-text" className="min-w-0 bg-white rounded-sm border border-stone-200 p-6 md:p-12 md:pl-16 space-y-10">
           {/* 卷首 */}
-          <header className="border-b-4 border-brand-900 pb-8">
-            <div className="flex flex-wrap gap-2 mb-5">
-              <span className="px-2 py-1 bg-brand-900 text-white text-[10px] font-black tracking-widest">{r.court}</span>
-              <span className="px-2 py-1 bg-accent-100 text-accent-800 text-[10px] font-black tracking-widest border border-accent-200">{r.result}</span>
-              {r.statutes.map(s => (
-                <Link key={s} to={`/judgments/browse?statute=${encodeURIComponent(s)}`} className="px-2 py-1 bg-paper-100 text-brand-700 text-[10px] font-black tracking-widest border border-brand-100 hover:border-accent-400">{short(s)}</Link>
-              ))}
-              <span className="px-2 py-1 bg-paper-100 text-brand-700 text-[10px] font-black tracking-widest border border-brand-100">{r.docType}</span>
-              {r.source === 'legacy' && <span className="px-2 py-1 bg-paper-100 text-brand-400 text-[10px] font-black tracking-widest border border-brand-100" title="Excel 未收錄，沿用舊版網站資料">舊版資料</span>}
-              {a.starred && <span className="px-2 py-1 bg-accent-500 text-brand-950 text-[10px] font-black tracking-widest"><Star className="w-3 h-3 inline -mt-0.5 mr-1 fill-current" />重點案例</span>}
-            </div>
-            <h1 className="text-3xl md:text-4xl font-classic font-bold text-brand-900 leading-[1.2] tracking-tight">{r.title}</h1>
-            <div className="mt-4 flex flex-wrap items-center text-[11px] text-brand-400 font-bold tracking-[0.15em] gap-x-6 gap-y-1">
+          <header className="pb-6 border-b-2 border-brand-900">
+            <p className="text-sm text-brand-500">
+              {r.court}・{r.docType}
+              {r.statutes.map(s => <span key={s}>・<Link to={`/judgments/browse?statute=${encodeURIComponent(s)}`} className="hover:text-accent-700 hover:underline">{short(s)}</Link></span>)}
+              {r.source === 'legacy' && <span title="Excel 未收錄，沿用舊版網站資料">・舊版資料</span>}
+              {a.starred && <span className="text-accent-700">・<Star className="w-3.5 h-3.5 inline -mt-0.5 fill-current" /> 重點案例</span>}
+            </p>
+            <h1 className="mt-2 text-3xl md:text-[34px] font-classic font-bold text-brand-900 leading-snug">{r.title}</h1>
+            <p className="mt-3 text-sm text-brand-500 flex flex-wrap gap-x-5 gap-y-1">
               {r.date && <span>{r.date}</span>}
               {r.cause && <span>案由：{r.cause}</span>}
-              <span className="font-mono tracking-normal">{r.id}</span>
-            </div>
+              <span className="font-mono text-xs pt-0.5">{r.id}</span>
+            </p>
+            {r.favor && <FavorLine f={r.favor} result={r.result} />}
           </header>
 
           {r.coding && <CodingCard r={r} />}
           {r.caseAnalysis && Object.entries(r.caseAnalysis).map(([st, an]) => <AnalysisCard key={st} statute={st} a={an} />)}
           {r.tables?.length > 0 && <DecisionTables tables={r.tables} />}
 
-          <div className="space-y-16">
-            {!sections && <div className="py-10 text-center text-brand-300 font-classic italic">讀取全文…</div>}
-            {sections && !processed.length && <div className="py-10 text-center text-brand-300 font-classic italic">這件裁判沒有全文資料，請參考右側原始連結。</div>}
+          <div className="space-y-12">
+            {!sections && <div className="py-10 text-center text-brand-400 font-classic">讀取全文…</div>}
+            {sections && !processed.length && <div className="py-10 text-center text-brand-400 font-classic">這件裁判沒有全文資料，請參考右側原始連結。</div>}
             {processed.map(([title, text]) => (
               <section key={title}>
                 <SectionTitle>{title}</SectionTitle>
@@ -193,19 +187,32 @@ const Body = () => {
 
 const Field = ({ label, children }) => children ? (
   <div>
-    <p className="text-[10px] font-black text-brand-300 tracking-widest mb-1.5 font-sans">{label}</p>
+    <p className="text-xs text-brand-400 mb-1 font-sans">{label}</p>
     <div className="font-classic text-brand-900 leading-relaxed text-[15px]">{children}</div>
   </div>
 ) : null;
 
 const ClassicCard = ({ title, side, children, accent = 'var(--color-accent-500)' }) => (
-  <div className="bg-paper-100/50 rounded-sm border border-brand-100 shadow-inner relative overflow-hidden">
-    <div className="absolute top-0 left-0 w-1 h-full" style={{ background: accent }}></div>
-    <div className="px-6 md:px-8 pt-5 pb-3 border-b border-brand-200/60 flex flex-wrap justify-between items-baseline gap-2">
-      <span className="text-xs font-black text-accent-600 tracking-[0.3em]">{title}</span>
-      {side && <span className="text-[10px] font-bold text-brand-400 tracking-widest">{side}</span>}
+  <section className="bg-paper-50 border-l-2 pl-5 pr-4 py-4" style={{ borderColor: accent }}>
+    <div className="flex flex-wrap justify-between items-baseline gap-2 mb-4">
+      <h2 className="font-classic font-bold text-brand-900">{title}</h2>
+      {side && <span className="text-xs text-brand-400">{side}</span>}
     </div>
-    <div className="p-6 md:p-8 grid md:grid-cols-2 gap-x-10 gap-y-5">{children}</div>
+    <div className="grid md:grid-cols-2 gap-x-10 gap-y-4">{children}</div>
+  </section>
+);
+
+// 卷首的結論列：這件裁判有利於誰、轉型正義一方勝敗
+const FavorLine = ({ f, result }) => (
+  <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 text-[15px] font-classic">
+    <span><span className="text-brand-400 text-sm font-sans mr-2">結果</span>{result}</span>
+    <span>
+      <span className="text-brand-400 text-sm font-sans mr-2">有利於</span>
+      <span className="inline-block w-2 h-2 rounded-full mr-1.5 -translate-y-0.5" style={{ background: FAVOR_COLOR[f.side] }} />
+      {f.who}<span className="text-brand-400 text-sm">（{f.side}）</span>
+    </span>
+    <span className="text-sm font-sans px-1.5 py-0.5 rounded-sm text-white" style={{ background: TJ_COLOR[f.tj] }} title={f.tjNote || ''}>{f.tj}</span>
+    <p className="basis-full text-sm text-brand-500 font-sans">依據：{f.basis}{f.tjNote && `；${f.tjNote}`}（{f.method}）</p>
   </div>
 );
 
@@ -213,7 +220,7 @@ const CodingCard = ({ r }) => {
   const c = r.coding;
   const pos = c.stance === '有利';
   return (
-    <ClassicCard title={pos ? '研究歸類・有利聲請人' : '研究歸類・否定請求'} side={c['歸類方式']} accent={pos ? 'var(--color-favorable)' : 'var(--color-unfavorable)'}>
+    <ClassicCard title={pos ? '研究歸類：有利於聲請人' : '研究歸類：否定請求'} side={c['歸類方式']} accent={pos ? 'var(--color-favorable)' : 'var(--color-unfavorable)'}>
       {pos ? <>
         <Field label="案情摘要">{c['案情摘要']}</Field>
         <Field label="原處分／原決定立場">{c['原處分／原決定立場']}{c['原處分／原決定作成者'] && <span className="text-brand-400 text-sm">（{c['原處分／原決定作成者']}）</span>}</Field>
@@ -231,7 +238,7 @@ const CodingCard = ({ r }) => {
 };
 
 const AnalysisCard = ({ statute, a }) => (a['事實簡述'] || a['分類']) ? (
-  <ClassicCard title={`個案分析・${short(statute)}`} side={a['結果']}>
+  <ClassicCard title={`個案分析：${short(statute)}`} side={a['結果']}>
     <Field label="爭點">{a['分類']}</Field>
     <Field label="上訴人">{a['上訴人']}</Field>
     <div className="md:col-span-2"><Field label="事實">{a['事實簡述']}</Field></div>
@@ -239,7 +246,7 @@ const AnalysisCard = ({ statute, a }) => (a['事實簡述'] || a['分類']) ? (
     <div className="md:col-span-2"><Field label="理由">{a['理由']}</Field></div>
   </ClassicCard>
 ) : (
-  <ClassicCard title={`個案分析・${short(statute)}`} side={a['勝負歸類']}>
+  <ClassicCard title={`個案分析：${short(statute)}`} side={a['勝負歸類']}>
     <Field label="當事人">{[a['原告／上訴人／聲請人'], a['被告／被上訴人／原決定機關']].filter(Boolean).join(' 對 ')}</Field>
     <Field label="爭議處分或請求">{a['爭議處分或請求']}</Field>
     <div className="md:col-span-2"><Field label="主要爭執事實">{a['主要爭執事實']}</Field></div>
@@ -251,13 +258,13 @@ const AnalysisCard = ({ statute, a }) => (a['事實簡述'] || a['分類']) ? (
 
 const DecisionTables = ({ tables }) => (
   <details className="bg-paper-100/50 rounded-sm border border-brand-100">
-    <summary className="px-6 md:px-8 py-4 cursor-pointer text-xs font-black text-accent-600 tracking-[0.3em]">附表・參與原審判者（{tables.length} 表）</summary>
+    <summary className="px-6 md:px-8 py-4 cursor-pointer font-classic font-bold text-brand-800">附表：參與原審判者（{tables.length} 表）</summary>
     <div className="px-6 md:px-8 pb-6 space-y-4 overflow-x-auto">
       {tables.map((t, i) => (
         <table key={i} className="text-sm font-classic border border-brand-200 w-full bg-white">
           <tbody>
             {t.data.map((row, ri) => (
-              <tr key={ri} className={ri === 0 ? 'bg-paper-100 text-[11px] font-sans font-black text-brand-400 tracking-widest' : 'text-brand-900'}>
+              <tr key={ri} className={ri === 0 ? 'bg-paper-100 text-xs font-sans text-brand-500' : 'text-brand-900'}>
                 {row.map((c, ci) => <td key={ci} className="border border-brand-100 px-3 py-2 align-top">{c}</td>)}
               </tr>
             ))}
