@@ -26,6 +26,90 @@ MEETING_RE = re.compile(r"(1\d\d)\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*�
 NAME_OK = re.compile(r"^[一-鿿]{2,4}$")
 
 
+# 促轉會委員名冊：決定書署名的姓名彼此相連（「彭仁郁葉虹靈許雪姬」），依名冊切開
+TJC_MEMBERS = ["高天惠'Eleng Tjaljimaraw", "蔡志偉 Awi Mona", "楊翠", "葉虹靈", "彭仁郁", "許雪姬", "尤伯祥",
+               "林佳範", "陳雨凡", "王增勇", "徐偉群"]
+# 同一人在不同決定書的寫法
+TJC_ALIASES = {"'ElengTjaljimaraw（高天惠）": "高天惠'Eleng Tjaljimaraw", "AwiMona蔡志偉": "蔡志偉 Awi Mona", "蔡志偉": "蔡志偉 Awi Mona"}
+TJC_TITLES = ["代理主任委員", "副主任委員", "主任委員", "委員"]
+SIG_RE = re.compile(r"促\s*進\s*轉\s*型\s*正\s*義\s*委\s*員\s*會\s*(?:代\s*理\s*|副\s*)?主\s*任\s*委\s*員")
+HEAD_RE = re.compile(r"(?m)^[ \t]*(主\s*文|事\s*實|理\s*由)[ \t]*(?:\n|(?=\S))")
+
+
+def _squash(t):
+    return re.sub(r"\s+", "", t)
+
+
+def _signature(block):
+    """「促進轉型正義委員會代理主任委員 楊 翠委員 彭仁郁葉虹靈…中華民國 109 年 1 月 21 日」→ 一行一個職稱"""
+    m = DATE_RE.search(block)
+    date = f"中華民國 {_squash(m.group(1))} 年 {_squash(m.group(2))} 月 {_squash(m.group(3))} 日" if m else ""
+    body = _squash(block[:m.start()] if m else block)
+    body = re.sub(r"公開版|\d+", "", body).replace("促進轉型正義委員會", "", 1)
+    members = {**{_squash(n): n for n in TJC_MEMBERS}, **{_squash(k): v for k, v in TJC_ALIASES.items()}}
+    members = dict(sorted(members.items(), key=lambda kv: -len(kv[0])))  # 長的先比對
+    title_re = "|".join(TJC_TITLES)
+    lines = ["促進轉型正義委員會"]
+    for tm in re.finditer(rf"({title_re})(.*?)(?=(?:{title_re})|$)", body):
+        names, rest = [], tm.group(2)
+        while rest:
+            hit = next((k for k in members if rest.startswith(k)), None)
+            if not hit:
+                names.append(rest)
+                break
+            names.append(members[hit])
+            rest = rest[len(hit):]
+        if names:
+            if lines[-1].startswith(tm.group(1) + "　"):
+                lines[-1] += "、" + "、".join(names)
+            else:
+                lines.append(f"{tm.group(1)}　{'、'.join(names)}")
+    if date:
+        lines.append(date)
+    return "\n".join(lines)
+
+
+def split_decision(ft, main):
+    """決定書全文 → 前置、主文、事實、理由、署名、附記（教示、附表說明）"""
+    ft = ft.replace("\r", "")
+    heads = {}
+    for m in HEAD_RE.finditer(ft):
+        k = _squash(m.group(1))
+        if k == "主文" and "主文" not in heads:
+            heads[k] = m
+        elif k in ("事實", "理由") and "主文" in heads and k not in heads and m.start() > heads["主文"].start():
+            if k == "事實" and "理由" in heads:
+                continue
+            heads[k] = m
+    if "主文" not in heads or "理由" not in heads:
+        return OrderedDict([("全文", ft.strip())])
+    order = sorted(heads.items(), key=lambda kv: kv[1].start())
+    sec = OrderedDict()
+    head = ft[:heads["主文"].start()]
+    head = re.sub(r"^\s*促進轉型正義委員會\s*(復查)?決定書\s*\S*字第\s*\d+\s*號\s*", "", head)
+    head = re.sub(r"(當事人|復查申請人|聲請人|申請人)\s*[：:]\s*", r"\n\1", head)
+    head = re.sub(r"\s*(關於|復查申請人因|聲請人因|申請人因)", lambda m: "\n" + m.group(1), head, count=1) if "\n" in head else head
+    sec["前置"] = head.strip()
+    for i, (k, m) in enumerate(order):
+        end = order[i + 1][1].start() if i + 1 < len(order) else len(ft)
+        sec[k] = ft[m.end():end].strip()
+    if main and len(_squash(main)) >= len(_squash(sec["主文"])) * 0.6:
+        sec["主文"] = main.strip()
+    # 理由之後的署名與教示
+    reason = sec["理由"]
+    sigs = list(SIG_RE.finditer(reason))
+    sig = sigs[-1].start() if sigs else -1
+    if sig > 0:
+        tail = reason[sig:]
+        dm = DATE_RE.search(tail)
+        sec["理由"] = reason[:sig].strip()
+        sec["署名"] = _signature(tail[:dm.end()] if dm else tail)
+        extra = tail[dm.end():].strip() if dm else ""
+        if extra:
+            sec["附記"] = extra
+    return sec
+
+
 def mil_cases(text):
     return sorted({f"({int(a)}){b}字第{int(c)}號" for a, b, c in MIL_RE.findall(text or "")})
 
@@ -47,21 +131,20 @@ def load_decisions(src_dir):
             no = re.sub(r"\s*（.*$", "", base).replace("復查決定書", "").strip()
             subjects = [meta["subject"]] if meta.get("subject") and NAME_OK.match(meta["subject"]) else []
         kind = "調查報告" if no == "調查報告" else ("復查決定書" if "復查" in no else "決定書")
-        title = f"促進轉型正義委員會 {no if no != '調查報告' else '調查報告（' + '、'.join(subjects) + '）'}" + ("" if kind == "調查報告" or no.endswith("決定書") else " 決定書")
+        title = f"促進轉型正義委員會 {no if no != '調查報告' else '調查報告（' + '、'.join(subjects) + '）'}" + ("" if kind == "調查報告" or no.endswith("決定書") else f" {kind}")
         nums = lambda t: tuple(int(re.sub(r"\s", "", x)) for x in t)
         dates = [nums(t) for t in DATE_RE.findall(ft) if 106 <= nums(t)[0] <= 115] or \
                 [nums(t) for t in MEETING_RE.findall(ft) if 106 <= int(t[0]) <= 115]
         y, mo, dd = dates[-1] if dates else (None, None, None)
         rid = "TJC," + no + ("," + "、".join(subjects) if no == "調查報告" else "")
-        sections = OrderedDict()
-        if main and main[:20] in ft:
-            head, _, rest = ft.partition(main[:20])
-            sections["前置"] = re.sub(r"\s*主\s*文\s*$", "", head).strip()
-            sections["主文"] = main
-            rest = rest[len(main) - 20:] if len(rest) >= len(main) - 20 else rest
-            sections["理由"] = re.sub(r"^\s*理\s*由\s*", "", rest).strip()
-        else:
-            sections["全文"] = ft.strip()
+        sections = split_decision(ft, main)
+        # 附表已另以結構化表格呈現（tables），附記中的攤平文字只留教示
+        if d.get("tables") and "附表" in sections.get("附記", ""):
+            keep = sections["附記"].split("附表")[0].strip()
+            if keep:
+                sections["附記"] = keep
+            else:
+                del sections["附記"]
         if kind == "復查決定書":
             result = "駁回" if rejected else "撤銷原處分"
         elif kind == "調查報告":
