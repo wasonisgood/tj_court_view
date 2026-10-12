@@ -145,7 +145,8 @@ for (const r of records) {
   const description = caseDescription(r, short(r.statute));
   const body = `<nav><a href="${href('/')}">首頁</a><a href="${href('/judgments/browse')}">裁判檢索</a></nav>`
     + `<h1>${esc(r.title)}</h1>`
-    + dl([['法院／機關', r.court], ['日期', r.date], ['案由', r.cause], ['條例', (r.statutes || [r.statute]).join('、')], ['裁判結果', r.result], ['字號', r.id]])
+    + dl([['法院／機關', r.court], ['日期', r.date], ['案由', r.cause], ['條例', (r.statutes || [r.statute]).join('、')], ['裁判結果', r.result],
+      ['有利於', r.favor && `${r.favor.who}（${r.favor.side}）`], ['轉型正義一方', r.favor?.tj], ['判斷依據', r.favor?.basis], ['字號', r.id]])
     + (r.mainText ? `<h2>主文</h2><p>${esc(r.mainText)}</p>` : '')
     + analysis + coding + text
     + (r.url ? `<p><a href="${esc(r.url)}" rel="nofollow noopener">司法院裁判書系統原文</a></p>` : '');

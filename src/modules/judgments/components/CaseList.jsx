@@ -4,19 +4,21 @@ import { Link } from 'react-router-dom';
 import { Star, MessageSquare, Flag } from 'lucide-react';
 import { useStore } from '../../../core/StoreContext';
 import { Modal, Pager, Empty } from '../../../ui';
-import { short } from '../data';
+import { short, FAVOR_COLOR } from '../data';
 import ExportButton from './ExportButton';
 
 // 逗號保留原樣，網址較易讀，也和建置時產生的靜態頁檔名一致
 export const caseHref = (r) => `/judgments/case/${encodeURIComponent(r.id).replace(/%2C/gi, ',')}`;
 
+// 清單右側：這件裁判有利於誰
 export const StanceTag = ({ r }) => {
-  const s = r.coding?.stance;
-  if (!s) return <span className="text-xs text-stone-400">未歸類</span>;
+  const f = r.favor;
+  if (!f) return null;
+  const label = ['互有勝負', '不分勝負'].includes(f.side) ? f.side : `有利${f.side}`;
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-stone-700">
-      <span className="w-2 h-2 rounded-full" style={{ background: s === '有利' ? 'var(--color-favorable)' : 'var(--color-unfavorable)' }} />
-      {s}
+    <span className="inline-flex items-center gap-1 text-xs text-stone-700" title={`${f.who}｜${f.basis}`}>
+      <span className="w-2 h-2 rounded-full" style={{ background: FAVOR_COLOR[f.side] }} />
+      {label}
     </span>
   );
 };

@@ -36,6 +36,7 @@ DEFAULT_XLSX = os.path.join(ROOT, "..", "judge_mcp", "轉型正義判決匯出_�
 DEFAULT_DECISIONS = os.path.join(ROOT, "..", "tw-tj-decisions")
 DEFAULT_LEGACY = os.path.join(ROOT, "data_source", "legacy_data.js")
 PARTY_ANALYSIS = os.path.join(ROOT, "data_source", "party_assets_analysis.json")
+FAVOR_MANUAL = os.path.join(ROOT, "data_source", "favor_manual.json")
 OUT_DIR = os.path.join(ROOT, "public", "data", "judgments")
 
 STATUTES = [
@@ -426,10 +427,117 @@ def build(xlsx, legacy_path, decisions_dir=None):
     notes = {key: relabel(notes_from_sheet(wb[name])) for name, key in NOTE_SHEETS.items() if name in wb.sheetnames}
     notes["編碼說明"] = relabel(coding_notes)
     notes["黨產條例_分類"] = party_groups
+    manual = json.load(open(FAVOR_MANUAL, encoding="utf-8")) if os.path.exists(FAVOR_MANUAL) else {}
     for rec in ordered:
         if rec.get("coding"):
             rec["coding"] = relabel(rec["coding"])
+        rec["favor"] = favor_of(rec, manual)
     return ordered, texts, notes, persons
+
+
+# ── 有利於誰 ─────────────────────────────────────────────
+# 每件裁判都標示：有利於哪一方（side）、具體是誰（who）、依據（basis）、判讀方式（method），
+# 以及轉型正義一方勝敗（tj）。轉型正義一方：二二八、戒嚴、威權、促轉平復等請求案件是請求人；
+# 黨產、年資、政治檔案條例案件是執行轉型正義措施的國家機關。
+
+SIDE_CLAIMANT, SIDE_STATE, SIDE_PARTY, SIDE_OFFICIAL, SIDE_PRIVATE = "請求人／被害人", "國家機關", "政黨及相關組織", "退職政務人員", "其他私人"
+SIDE_MIXED, SIDE_NONE = "互有勝負", "不分勝負"
+TJ_WIN, TJ_LOSE, TJ_MIXED, TJ_NA = "轉型正義一方勝", "轉型正義一方敗", "互有勝負", "不適用"
+MEASURE_STATUTES = {PARTY, SENIORITY, "政治檔案條例"}
+PARTY_ORGS = re.compile(r"國民黨|救國團|救助總會|自由民主聯盟|中央投資|欣裕台|欣光華|中國廣播|婦女聯合會|國家發展基金會|民權基金會|民族基金會")
+STATE_ORGS = re.compile(r"支給機關|審定機關|部|局|府|委員會|院|大學|醫院|檢察署|司令部|基金會|法院|機關")
+# 個別判斷：當事人身分無法由名稱判定、或轉型正義立場需另行說明者
+TJ_OVERRIDE = {
+    "TPBA,111,訴,260": (TJ_LOSE, "研究者申請應用政治檔案遭駁回"),
+    "TPSV,109,台上,2410": (TJ_NA, "民事損害賠償"), "TPSV,112,台上,2347": (TJ_NA, "民事股東會決議爭議"),
+    "TPSV,112,台上,1034": (TJ_NA, "民事損害賠償"),
+}
+
+
+def party_name(v):
+    v = re.sub(r"^(原告|被告)：", "", v or "")
+    return "、".join(x for x in (re.sub(r"[（(,，].*$", "", p).strip() for p in re.split(r"[、；]", v)) if x)
+
+
+def side_of(name):
+    if PARTY_ORGS.search(name or ""):
+        return SIDE_PARTY
+    if "政務人員" in (name or ""):
+        return SIDE_OFFICIAL
+    if STATE_ORGS.search(name or ""):
+        return SIDE_STATE
+    if re.search(r"研究者|黨史館", name or ""):
+        return SIDE_PRIVATE
+    return SIDE_CLAIMANT
+
+
+def tj_of(side, statute, opp=None):
+    """opp：敗訴一方的身分。機關勝訴而對造是政黨或政務人員時，也屬轉型正義措施獲維持"""
+    if side == SIDE_MIXED:
+        return TJ_MIXED
+    if side in (SIDE_NONE, SIDE_PRIVATE):
+        return TJ_NA
+    if side == SIDE_STATE:
+        return TJ_WIN if statute in MEASURE_STATUTES or opp in (SIDE_PARTY, SIDE_OFFICIAL) else TJ_LOSE
+    return TJ_WIN if side == SIDE_CLAIMANT else TJ_LOSE
+
+
+def favor_from_analysis(statute, a):
+    """回傳 (勝訴方身分, 勝訴方, 依據, 敗訴方身分)"""
+    if "結果" in a and "上訴人" in a:  # 黨產條例整理表：上訴人＋上訴結果
+        app = a["上訴人"]
+        app_side = side_of(app)
+        basis = f"上訴人{party_name(app)}：{a.get('上訴結果') or a['結果']}"
+        if a["結果"] == "發回更審":
+            return app_side, party_name(app), basis, SIDE_STATE if app_side != SIDE_STATE else SIDE_PARTY
+        if app_side == SIDE_STATE:
+            return SIDE_PARTY, "中國國民黨", basis, SIDE_STATE
+        return SIDE_STATE, "不當黨產處理委員會", basis, app_side
+    out, detail = a.get("勝負歸類") or "", a.get("勝負") or ""
+    first, second = a.get("原告／上訴人／聲請人", ""), a.get("被告／被上訴人／原決定機關", "")
+    if "一部" in out or "雙方" in out:
+        return SIDE_MIXED, f"{party_name(first)}／{party_name(second)}", detail or out, SIDE_MIXED
+    # 年資條例分頁的第一欄是上訴人（常為機關），勝負歸類則以原審原告（社團）為準，故依雙方身分判斷
+    state, other = (first, second) if side_of(first) == SIDE_STATE else (second, first)
+    if side_of(first) == SIDE_STATE or side_of(second) == SIDE_STATE:
+        claimant_won = out in ("請求人勝訴（含廢棄發回）", "原告勝訴（含廢棄發回）")
+        winner, loser = (other, state) if claimant_won else (state, other)
+        return side_of(winner), party_name(winner), out, side_of(loser)
+    winner, loser = (first, second) if "勝訴（含" in out else (second, first)
+    return side_of(winner), party_name(winner), out, side_of(loser)
+
+
+def favor_of(rec, manual):
+    st = rec["statute"]
+    m = manual.get(rec["id"]) or manual.get(base_id(rec["id"]))
+    if m:
+        f = dict(m, method="主文與當事人判讀")
+    elif rec.get("caseAnalysis"):
+        sts = [x for x in rec["caseAnalysis"] if x in MEASURE_STATUTES] or list(rec["caseAnalysis"])
+        st = sts[0]
+        side, who, basis, opp = favor_from_analysis(st, rec["caseAnalysis"][st])
+        f = {"side": side, "who": who, "basis": basis, "method": "個案分析", "_opp": opp}
+    elif rec.get("coding"):
+        c = rec["coding"]
+        if c["stance"] == "有利":
+            f = {"side": SIDE_CLAIMANT, "who": "聲請人／原告", "basis": c.get("有利結果類型") or "有利於聲請人", "method": "Excel 歸類"}
+        else:
+            f = {"side": SIDE_STATE, "who": "國家（請求遭否定）", "basis": c.get("否定類型") or "否定請求", "method": "Excel 歸類"}
+    elif rec.get("source") == "tjc":
+        res = rec.get("result") or ""
+        if res.startswith("平復"):
+            f = {"side": SIDE_CLAIMANT, "who": "、".join(rec.get("subjects") or []) or "聲請人", "basis": res, "method": "決定書結果"}
+        elif res == "駁回":
+            f = {"side": SIDE_STATE, "who": "促進轉型正義委員會", "basis": "平復聲請駁回", "method": "決定書結果"}
+        else:
+            f = {"side": SIDE_NONE, "who": "—", "basis": "調查報告，非准駁決定", "method": "決定書結果"}
+    else:
+        return None
+    f["tj"] = tj_of(f["side"], st, f.pop("_opp", None))
+    ov = TJ_OVERRIDE.get(base_id(rec["id"])) or TJ_OVERRIDE.get(",".join(rec["id"].split(",")[:4]))
+    if ov:
+        f["tj"], f["tjNote"] = ov
+    return f
 
 
 def keep_previous_decisions(records, texts):
@@ -471,6 +579,8 @@ def write(ordered, texts, notes, xlsx, persons=()):
         "total": len(ordered),
         "withText": sum(1 for r in ordered if r["hasText"]),
         "coded": dict(Counter(r["coding"]["stance"] for r in ordered if r.get("coding"))),
+        "favor": dict(Counter(r["favor"]["side"] for r in ordered if r.get("favor"))),
+        "unclassified": sum(1 for r in ordered if not r.get("favor")),
         "caseAnalysis": sum(1 for r in ordered if r.get("caseAnalysis")),
         "byStatute": dict(Counter(r["statute"] for r in ordered)),
         "bySource": dict(Counter(r["source"] for r in ordered)),

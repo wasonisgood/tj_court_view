@@ -71,6 +71,37 @@ export const SplitBars = ({ rows, onSelect }) => (
   </div>
 );
 
+/** 每列一條 100% 堆疊長條；keys 依序上色，點色段可列出案件 */
+export const StackRows = ({ rows, keys, colors, onSelect, labelWidth = 'w-44', note }) => (
+  <div className="space-y-2">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-stone-600 mb-1">
+      {keys.filter(k => rows.some(r => r.counts[k])).map(k => (
+        <span key={k} className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm" style={{ background: colors[k] }} />{k}</span>
+      ))}
+    </div>
+    {rows.map(r => {
+      const total = keys.reduce((n, k) => n + (r.counts[k] || 0), 0);
+      if (!total) return null;
+      const shown = keys.filter(k => r.counts[k]);
+      return (
+        <div key={r.label} className="flex items-center gap-3">
+          <span className={`${labelWidth} shrink-0 text-[13px] text-stone-700`}>{r.label}</span>
+          <div className="flex-1 flex h-5 gap-[2px]">
+            {shown.map((k, i) => (
+              <button
+                key={k} onClick={() => onSelect?.(r, k)} title={`${r.label}｜${k} ${fmt(r.counts[k])} 件（${pct(r.counts[k] / total)}）`}
+                className={`h-full hover:opacity-80 ${i === 0 ? 'rounded-l-[4px]' : ''} ${i === shown.length - 1 ? 'rounded-r-[4px]' : ''}`}
+                style={{ width: `${(r.counts[k] / total) * 100}%`, background: colors[k] }}
+              />
+            ))}
+          </div>
+          <span className="w-24 shrink-0 text-right text-xs tabular-nums text-stone-600">{note ? note(r, total) : `${fmt(total)} 件`}</span>
+        </div>
+      );
+    })}
+  </div>
+);
+
 const ChartTooltip = ({ active, payload, label, unit = '件', labelFmt }) => {
   if (!active || !payload?.length) return null;
   const items = payload.filter(p => p.value);

@@ -13,6 +13,14 @@ export const DEFAULT_SETTINGS = {
 // 研究紀錄的起始內容：取自 Excel 各分頁的更新說明，之後自行新增
 export const DEFAULT_LOG = [
   {
+    id: 'log-2026-10-12b',
+    date: '2026-10-12',
+    module: 'judgments',
+    title: '全部裁判標示有利於誰',
+    body: '黨產、年資、政治檔案、促轉、威權條例原本未歸類的案件全部判定勝訴方：有個案分析者依勝負與上訴結果，其餘 119 件裁定逐件依主文與當事人判讀；另標示轉型正義一方（請求人，或黨產、年資、政治檔案條例中的國家機關）勝敗。',
+    status: '完成',
+  },
+  {
     id: 'log-2026-10-12',
     date: '2026-10-12',
     module: 'judgments',

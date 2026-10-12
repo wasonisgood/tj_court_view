@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader, Section, StatTile } from '../../../ui';
-import { DataGate, useJudgments, STATUTES, STATUTE_COLOR, short, PERIOD_SHORT, periodIndex } from '../data';
-import { StackedYears, SplitBars, RatioLine } from '../components/charts';
+import { DataGate, useJudgments, STATUTES, STATUTE_COLOR, short, PERIOD_SHORT, periodIndex, FAVOR_SIDES, FAVOR_COLOR, TJ_OUTCOMES, TJ_COLOR, countBy } from '../data';
+import { StackedYears, SplitBars, RatioLine, StackRows } from '../components/charts';
 import { CaseListModal } from '../components/CaseList';
 
 const Overview = () => <DataGate><Body /></DataGate>;
@@ -47,7 +47,12 @@ const Body = () => {
         analysis: rs.filter(r => r.caseAnalysis).length,
       };
     });
-    return { coded, pos, manual, yearData, byStatute, byPeriod, table };
+    const tally = (rs, key) => Object.fromEntries(countBy(rs, key).map(d => [d.label, d.value]));
+    const favorRows = STATUTES.map(st => {
+      const rs = records.filter(r => r.statute === st);
+      return { label: short(st), full: st, items: rs, counts: tally(rs, r => r.favor?.side), tj: tally(rs, r => r.favor?.tj) };
+    });
+    return { coded, pos, manual, yearData, byStatute, byPeriod, table, favorRows };
   }, [records]);
 
   const series = STATUTES.map(st => ({ key: st, name: short(st), color: STATUTE_COLOR[st] }));
@@ -64,7 +69,7 @@ const Body = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
         <StatTile label="收錄裁判" value={records.length.toLocaleString()} sub={`全文 ${meta.withText?.toLocaleString()} 件`} />
-        <StatTile label="已完成有利／否定歸類" value={s.coded.length.toLocaleString()} sub={`占 ${Math.round((s.coded.length / records.length) * 100)}%，其中人工判讀 ${s.manual} 件`} />
+        <StatTile label="已判定有利於誰" value={records.filter(r => r.favor).length.toLocaleString()} sub={`全部收錄裁判；228 及戒嚴條例研究歸類 ${s.coded.length.toLocaleString()} 件`} />
         <StatTile label="有利於聲請人／原告" value={s.pos.length.toLocaleString()} sub={`占已歸類 ${((s.pos.length / s.coded.length) * 100).toFixed(1)}%`} onClick={() => setList({ title: '有利於聲請人／原告', items: s.pos })} />
         <StatTile label="逐件個案分析" value={records.filter(r => r.caseAnalysis).length} sub="黨產、年資、政治檔案、促轉條例" onClick={() => setList({ title: '個案分析案件', items: records.filter(r => r.caseAnalysis) })} />
       </div>
@@ -79,8 +84,25 @@ const Body = () => {
         <p className="text-xs text-stone-500 mt-2">93 至 95 年度的高峰，對應戒嚴回復條例第 6 條第 2 項五年請求期間（至 94 年 2 月 4 日）屆滿前後湧入的冤獄賠償覆議案件。</p>
       </Section>
 
+      <Section title="各條例的裁判有利於誰" note="全部 2 千餘件都已判定勝訴方：228 及戒嚴條例依研究歸類，黨產、年資、政治檔案、促轉條例依個案分析，其餘裁定依主文與當事人逐件判讀。點色段可列出案件。">
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="card p-4">
+            <h3 className="text-sm font-bold mb-3">有利於哪一方</h3>
+            <StackRows rows={s.favorRows} keys={FAVOR_SIDES} colors={FAVOR_COLOR} labelWidth="w-32"
+              onSelect={(row, k) => setList({ title: `${row.label}｜有利${k}`, items: row.items.filter(r => r.favor?.side === k) })} />
+          </div>
+          <div className="card p-4">
+            <h3 className="text-sm font-bold mb-3">轉型正義一方勝敗</h3>
+            <StackRows rows={s.favorRows.map(r => ({ ...r, counts: r.tj }))} keys={TJ_OUTCOMES} colors={TJ_COLOR} labelWidth="w-32"
+              note={(r, total) => `勝 ${Math.round(((r.counts['轉型正義一方勝'] || 0) / total) * 100)}%`}
+              onSelect={(row, k) => setList({ title: `${row.label}｜${k}`, items: row.items.filter(r => r.favor?.tj === k) })} />
+            <p className="text-xs text-stone-500 mt-3 leading-relaxed">轉型正義一方：二二八、戒嚴、威權、促轉平復等請求案件指請求人；黨產、年資、政治檔案條例案件指執行處分的國家機關。</p>
+          </div>
+        </div>
+      </Section>
+
       <div className="grid lg:grid-cols-2 gap-8">
-        <Section title="各條例有利比例" note="僅計入已歸類的 228 條例及戒嚴條例案件；點選色段可列出案件。">
+        <Section title="228 及戒嚴條例：有利比例" note="依 Excel 研究歸類；點選色段可列出案件。">
           <div className="card p-4">
             <SplitBars
               rows={s.byStatute}

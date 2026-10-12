@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PageHeader, Section, Tabs } from '../../../ui';
-import { DataGate, useJudgments, countBy, PARTY, SENIORITY, outcomeOf, typeOf, outcomeColor } from '../data';
+import { DataGate, useJudgments, countBy, PARTY, SENIORITY, outcomeOf, typeOf, outcomeColor, FAVOR_COLOR, TJ_COLOR } from '../data';
 import { HBarList } from '../components/charts';
 import { caseHref, CaseListModal } from '../components/CaseList';
 import { NoteBlock, RefText } from '../components/Notes';
@@ -66,11 +66,15 @@ const PartyTopic = ({ setList }) => {
   const byGroup = groups.map(g => ({ ...g, items: cases.filter(c => c.a['分類'] === g.label) }));
   const appellants = countBy(cases, c => partyName(c.a['上訴人']));
   const results = countBy(cases, c => c.a['結果']).map(d => ({ ...d, color: outcomeColor(d.label) }));
+  const winners = countBy(cases, c => c.r.favor?.who).map(d => ({ ...d, color: FAVOR_COLOR[cases.find(c => c.r.favor?.who === d.label)?.r.favor.side] }));
   const open = (title, fn) => setList({ title, items: cases.filter(fn).map(c => c.r), detail: r => r.caseAnalysis[PARTY]['理由'] });
 
   return (
     <>
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid lg:grid-cols-3 gap-6 mb-6">
+        <Section title="有利於" className="mb-0">
+          <div className="card p-4"><HBarList data={winners} total={cases.length} labelWidth="w-36" onSelect={l => open(`有利於${l}`, c => c.r.favor?.who === l)} /></div>
+        </Section>
         <Section title="上訴結果" className="mb-0">
           <div className="card p-4"><HBarList data={results} total={cases.length} labelWidth="w-24" onSelect={l => open(l, c => c.a['結果'] === l)} /></div>
         </Section>
@@ -122,6 +126,14 @@ const PartyTopic = ({ setList }) => {
   );
 };
 
+const FavorText = ({ f }) => f ? (
+  <span>
+    <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: FAVOR_COLOR[f.side] }} />
+    {f.who}<span className="text-stone-400">（{f.side}）</span>
+    <span className="ml-2 text-xs px-1.5 py-0.5 rounded-sm text-white" style={{ background: TJ_COLOR[f.tj] }}>{f.tj}</span>
+  </span>
+) : null;
+
 const noOrder = (no) => {
   const [a, b] = String(no).split('-');
   return Number(a) * 100 + Number(b || 0);
@@ -140,6 +152,7 @@ const PartyCard = ({ r, a }) => (
       <span className="text-xs px-2 py-1 rounded-sm text-white" style={{ background: outcomeColor(a['結果']) }}>{a['結果']}</span>
     </div>
     <dl className="grid md:grid-cols-[6rem_1fr] gap-x-4 gap-y-2 text-sm leading-relaxed">
+      <dt className="text-stone-500">有利於</dt><dd><FavorText f={r.favor} /></dd>
       <dt className="text-stone-500">上訴人</dt><dd>{a['上訴人']}</dd>
       <dt className="text-stone-500">上訴結果</dt><dd>{a['上訴結果']}</dd>
       <dt className="text-stone-500">事實</dt><dd>{a['事實簡述']}</dd>
@@ -191,6 +204,7 @@ const GenericTopic = ({ topic, setList }) => {
                 <span className="text-xs px-2 py-1 rounded-sm text-white" style={{ background: outcomeColor(outcomeOf(a)) }}>{outcomeOf(a)}</span>
               </div>
               <dl className="grid md:grid-cols-[9rem_1fr] gap-x-4 gap-y-2 text-sm leading-relaxed">
+                <dt className="text-stone-500">有利於</dt><dd><FavorText f={r.favor} /></dd>
                 <dt className="text-stone-500">當事人</dt>
                 <dd>{a['原告／上訴人／聲請人']} <span className="text-stone-400">對</span> {a['被告／被上訴人／原決定機關']}{a['參加人'] && <span className="text-stone-500">（參加人：{a['參加人']}）</span>}</dd>
                 <dt className="text-stone-500">爭議處分或請求</dt><dd>{a['爭議處分或請求']}</dd>
