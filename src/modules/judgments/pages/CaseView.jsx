@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useDocumentMeta } from '../../../core/seo';
+import { caseDescription } from '../../../core/pageMeta';
 import { ArrowLeft, ExternalLink, FileText, Star, Flag, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { useStore } from '../../../core/StoreContext';
 import { useDialog, today } from '../../../ui';
@@ -55,6 +57,7 @@ const Body = () => {
   const { annotations, update, canEdit } = useStore();
   const [sections, setSections] = useState(null);
   const [law, setLaw] = useState(null);
+  useDocumentMeta({ title: r?.title || '找不到裁判', description: r ? caseDescription(r, short(r.statute)) : undefined, noindex: !r });
 
   useEffect(() => {
     let alive = true;
@@ -227,7 +230,15 @@ const CodingCard = ({ r }) => {
   );
 };
 
-const AnalysisCard = ({ statute, a }) => (
+const AnalysisCard = ({ statute, a }) => (a['事實簡述'] || a['分類']) ? (
+  <ClassicCard title={`個案分析・${short(statute)}`} side={a['結果']}>
+    <Field label="爭點">{a['分類']}</Field>
+    <Field label="上訴人">{a['上訴人']}</Field>
+    <div className="md:col-span-2"><Field label="事實">{a['事實簡述']}</Field></div>
+    <div className="md:col-span-2"><Field label="上訴結果">{a['上訴結果']}</Field></div>
+    <div className="md:col-span-2"><Field label="理由">{a['理由']}</Field></div>
+  </ClassicCard>
+) : (
   <ClassicCard title={`個案分析・${short(statute)}`} side={a['勝負歸類']}>
     <Field label="當事人">{[a['原告／上訴人／聲請人'], a['被告／被上訴人／原決定機關']].filter(Boolean).join(' 對 ')}</Field>
     <Field label="爭議處分或請求">{a['爭議處分或請求']}</Field>

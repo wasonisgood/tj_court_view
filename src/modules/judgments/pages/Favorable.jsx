@@ -17,7 +17,7 @@ const Body = () => {
   const [list, setList] = useState(null);
   const [typeFilter, setTypeFilter] = useState('');
   const pos = useMemo(() => records.filter(r => r.coding?.stance === '有利'), [records]);
-  const blocks = notes['財產型_有利類型統計'];
+  const blocks = notes['228及戒嚴條例_有利類型統計'];
   const scenarios = findBlock(blocks, '情境說明');
   const scenarioOf = (type) => scenarios?.rows.find(r => r[0] === type);
 
@@ -38,7 +38,7 @@ const Body = () => {
     <div>
       <CaseListModal state={list} onClose={() => setList(null)} />
       <PageHeader
-        kicker="轉型正義裁判｜研究歸類" title="有利案件分析"
+        kicker="228條例及戒嚴條例" title="有利案件分析"
         description="法院撤銷機關（含受託行使公權力之基金會）不利處分、命作成給付處分，或覆議／覆審撤銷原駁回決定、維持原准予賠償決定的案件。每件均歸納法院據以作成有利決定的主要理由與併同指摘的次要理由。"
         actions={<ExportButton items={pos} filename="有利案件" />}
       />
@@ -82,7 +82,7 @@ const Body = () => {
         </Section>
       </div>
 
-      <Section title="各理由類型的情境說明" note="研究助理整理的說明與代表案例；案號可點選。">
+      <Section title="各理由類型的情境說明" note="各類型的說明與代表案例，案號可點選。">
         <div className="space-y-3">
           {mainTypes.map(t => {
             const row = scenarioOf(t);

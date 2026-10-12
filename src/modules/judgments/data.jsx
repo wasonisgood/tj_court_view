@@ -6,7 +6,12 @@ const BASE = import.meta.env.BASE_URL + 'data/judgments/';
 export const STATUTES = [
   '戒嚴時期人民受損權利回復條例', '二二八事件處理及補償條例', '戒嚴時期不當叛亂暨匪諜審判案件補償條例',
   '政黨及其附隨組織不當取得財產處理條例', '促進轉型正義條例', '威權統治時期國家不法行為被害者權利回復條例', '政治檔案條例',
+  '公職人員年資併社團專職人員年資計發退離給與處理條例',
 ];
+export const PARTY = '政黨及其附隨組織不當取得財產處理條例';
+export const SENIORITY = '公職人員年資併社團專職人員年資計發退離給與處理條例';
+// 有利／否定歸類的範圍：二二八條例與戒嚴時期三部條例的請求案件（Excel 舊稱「財產型」）
+export const CODED_SCOPE = '228條例及戒嚴條例';
 export const STATUTE_SHORT = {
   '戒嚴時期人民受損權利回復條例': '戒嚴回復條例',
   '二二八事件處理及補償條例': '二二八條例',
@@ -15,6 +20,7 @@ export const STATUTE_SHORT = {
   '促進轉型正義條例': '促轉條例',
   '威權統治時期國家不法行為被害者權利回復條例': '威權條例',
   '政治檔案條例': '政治檔案條例',
+  '公職人員年資併社團專職人員年資計發退離給與處理條例': '年資條例',
 };
 // 條例 → 固定色（依條例指派，篩選時不改色）
 export const STATUTE_COLOR = Object.fromEntries(STATUTES.map((s, i) => [s, `var(--color-series-${i + 1})`]));
@@ -36,6 +42,19 @@ export const periodIndex = (rocYear) => {
 };
 
 export const stanceOf = (r) => r.coding?.stance || null;
+
+// 個案分析：各條例欄位不同，統一取「結果」與「主要類型」
+export const analysisOf = (r, statute) => (statute ? r.caseAnalysis?.[statute] : Object.values(r.caseAnalysis || {})[0]) || null;
+export const outcomeOf = (a) => a?.['勝負歸類'] || a?.['結果'] || null;
+export const typeOf = (a) => a?.['判斷類型（主）'] || a?.['分類'] || null;
+export const outcomeColor = (v = '') => {
+  if (/一部|雙方/.test(v)) return 'var(--color-series-4)';
+  if (/遭廢棄|敗訴|遭駁回/.test(v)) return 'var(--color-unfavorable)';
+  if (/勝訴/.test(v)) return 'var(--color-favorable)';
+  if (v === '發回更審') return 'var(--color-series-4)';
+  if (v === '駁回') return '#78716c';
+  return '#a8a29e';
+};
 
 const cache = {};
 const fetchJSON = (path) => {

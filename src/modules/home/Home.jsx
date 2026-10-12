@@ -35,9 +35,9 @@ const Home = () => {
   return (
     <div>
       <PageHeader
-        kicker={settings.owner}
+        kicker={settings.owner || undefined}
         title={settings.siteName}
-        description="研究資料、歸類成果與文獻集中於此。左側依研究主題分為模組；每一頁的資料都標明來源與整理方式，有疑問的地方可以直接在案件或文獻上留言。"
+        description="臺灣轉型正義相關條例的法院裁判、促轉會決定書與研究文獻。每一頁都註明資料來源與整理方式。"
       />
 
       <Section title="待處理">

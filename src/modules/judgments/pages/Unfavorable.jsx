@@ -22,7 +22,7 @@ const Body = () => {
   const [list, setList] = useState(null);
   const [group, setGroup] = useState('');
   const neg = useMemo(() => records.filter(r => r.coding?.stance === '否定'), [records]);
-  const blocks = notes['財產型_否定類型統計'];
+  const blocks = notes['228及戒嚴條例_否定類型統計'];
   const scenarios = findBlock(blocks, '情境說明');
 
   const s = useMemo(() => {
@@ -45,7 +45,7 @@ const Body = () => {
     <div>
       <CaseListModal state={list} onClose={() => setList(null)} />
       <PageHeader
-        kicker="轉型正義裁判｜研究歸類" title="否定案件分析"
+        kicker="228條例及戒嚴條例" title="否定案件分析"
         description="扣除有利案件後，其餘否定聲請人／原告請求的判決及決定書。每件只取一個主類型：程序上的障礙（期間、一事不再理、管轄）優先於實體理由；同時有多個理由時，以法院據以駁回的主要理由為準。"
         actions={<ExportButton items={neg} filename="否定案件" />}
       />
@@ -80,7 +80,7 @@ const Body = () => {
         </div>
       </Section>
 
-      <Section title="各否定類型的情境說明" note="研究助理整理的說明與代表案例；案號可點選。">
+      <Section title="各否定類型的情境說明" note="各類型的說明與代表案例，案號可點選。">
         <div className="space-y-3">
           {GROUPS.map(g => (
             <div key={g}>

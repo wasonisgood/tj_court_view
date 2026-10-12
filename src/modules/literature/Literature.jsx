@@ -65,7 +65,7 @@ const Literature = () => {
     <div>
       <PageHeader
         kicker="文獻清單" title="文獻清單"
-        description="研究使用的論著、法規與大法官解釋。初始資料包含李怡俐老師個人網站上與轉型正義相關的著作，以及裁判研究中出現的主要法規與解釋；可自行新增、匯入 EndNote／Zotero 匯出檔。"
+        description="研究使用的論著、法規與大法官解釋。初始資料包含與轉型正義相關的著作，以及裁判研究中出現的主要法規與解釋；可自行新增、匯入 EndNote／Zotero 匯出檔。"
         actions={<>
           {canEdit && <button className="btn-primary" onClick={() => setEditing({ ...EMPTY })}><Plus className="w-4 h-4" />新增文獻</button>}
           {canEdit && <button className="btn" onClick={() => fileRef.current?.click()}><Upload className="w-4 h-4" />匯入</button>}

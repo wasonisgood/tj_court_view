@@ -7,7 +7,8 @@ import { Modal, Pager, Empty } from '../../../ui';
 import { short } from '../data';
 import ExportButton from './ExportButton';
 
-export const caseHref = (r) => `/judgments/case/${encodeURIComponent(r.id)}`;
+// 逗號保留原樣，網址較易讀，也和建置時產生的靜態頁檔名一致
+export const caseHref = (r) => `/judgments/case/${encodeURIComponent(r.id).replace(/%2C/gi, ',')}`;
 
 export const StanceTag = ({ r }) => {
   const s = r.coding?.stance;

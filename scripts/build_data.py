@@ -14,6 +14,9 @@
 用法：
   python scripts/build_data.py                                  # 預設讀 ../judge_mcp/ 下的 Excel
   python scripts/build_data.py --xlsx 路徑/檔名.xlsx --legacy data_source/legacy_data.js --decisions ../tw-tj-decisions
+
+找不到 tw-tj-decisions 時，沿用 public/data/judgments 既有的促轉會決定書與 persons.json，只更新法院裁判部分。
+黨產條例的個案分析取自 data_source/party_assets_analysis.json（由 scripts/import_party_analysis.py 自 Word 整理表產生）。
 """
 import argparse
 import json
@@ -32,15 +35,31 @@ ROOT = os.path.dirname(HERE)
 DEFAULT_XLSX = os.path.join(ROOT, "..", "judge_mcp", "轉型正義判決匯出_含威權與政治檔案條例.xlsx")
 DEFAULT_DECISIONS = os.path.join(ROOT, "..", "tw-tj-decisions")
 DEFAULT_LEGACY = os.path.join(ROOT, "data_source", "legacy_data.js")
+PARTY_ANALYSIS = os.path.join(ROOT, "data_source", "party_assets_analysis.json")
 OUT_DIR = os.path.join(ROOT, "public", "data", "judgments")
 
 STATUTES = [
     "戒嚴時期人民受損權利回復條例", "二二八事件處理及補償條例", "戒嚴時期不當叛亂暨匪諜審判案件補償條例",
     "政黨及其附隨組織不當取得財產處理條例", "促進轉型正義條例", "威權統治時期國家不法行為被害者權利回復條例", "政治檔案條例",
+    "公職人員年資併社團專職人員年資計發退離給與處理條例",
 ]
+PARTY = "政黨及其附隨組織不當取得財產處理條例"
+SENIORITY = "公職人員年資併社團專職人員年資計發退離給與處理條例"
+# 條例主分頁以外、併入某條例的分頁（如黨產條例相關的最高法院民刑事判決）
+EXTRA_SHEETS = {"黨產條例_最高法院": PARTY}
 POS_SHEET, NEG_SHEET = "財產型_最終有利聲請人", "財產型_否定請求"
-CASE_SHEETS = {"政治檔案_案件分析": "政治檔案條例", "促轉條例_案件分析": "促進轉型正義條例"}
-NOTE_SHEETS = ["財產型_有利類型統計", "財產型_否定類型統計", "政治檔案與促轉_類型統計", "年代趨勢統計"]
+CASE_SHEETS = {"政治檔案_案件分析": "政治檔案條例", "促轉條例_案件分析": "促進轉型正義條例", "年資條例_案件分析": SENIORITY}
+# 統計分頁 → 網站使用的名稱（Excel 舊名「財產型」實為二二八條例及戒嚴時期三部條例的請求案件）
+NOTE_SHEETS = OrderedDict([
+    ("財產型_有利類型統計", "228及戒嚴條例_有利類型統計"),
+    ("財產型_否定類型統計", "228及戒嚴條例_否定類型統計"),
+    ("政治檔案與促轉_類型統計", "政治檔案與促轉_類型統計"),
+    ("年資條例_類型統計", "年資條例_類型統計"),
+    ("年代趨勢統計", "年代趨勢統計"),
+])
+# 個案分析欄名統一（年資條例分頁用「上訴人（更審為原告）」等欄名）
+CASE_FIELD_ALIASES = {"上訴人（更審為原告）": "原告／上訴人／聲請人", "被上訴人（更審為被告）": "被告／被上訴人／原決定機關"}
+SHEET_LABEL = "228條例及戒嚴條例"
 SHARDS = 24
 
 # 法規名稱（含判決中常見簡稱）→ 正式名稱；只辨識這些法規，避免把句子片段誤判成法條
@@ -91,6 +110,17 @@ def clean(v):
         return None
     s = str(v).strip()
     return s or None
+
+
+def relabel(v):
+    """把 Excel 說明文字中的舊分頁名稱「財產型」換成網站用語"""
+    if isinstance(v, str):
+        return v.replace("財產型", SHEET_LABEL)
+    if isinstance(v, list):
+        return [relabel(x) for x in v]
+    if isinstance(v, dict):
+        return {k: relabel(x) for k, x in v.items()}
+    return v
 
 
 def base_id(jid):
@@ -221,16 +251,20 @@ def build(xlsx, legacy_path, decisions_dir=None):
     texts = {}
 
     # 1) 條例主分頁
-    for statute in STATUTES:
-        if statute not in wb.sheetnames:
+    party_meta = {}   # 黨產條例分頁的編號、分類
+    for sheet in STATUTES + list(EXTRA_SHEETS):
+        if sheet not in wb.sheetnames:
             continue
-        header, rows = sheet_rows(wb[statute])
+        statute = EXTRA_SHEETS.get(sheet, sheet)
+        header, rows = sheet_rows(wb[sheet])
         idx = {h: i for i, h in enumerate(header) if h}
         for r in rows:
             jid = clean(r[idx["案號"]])
             if not jid or not re.match(r"^[A-Z]{3,5},", jid):
                 continue  # 底部的法院件數統計列
             b = base_id(jid)
+            if "編號" in idx and clean(r[idx["編號"]]):
+                party_meta[b] = {"編號": clean(r[idx["編號"]]), "分類": clean(r[idx.get("分類")]) if "分類" in idx else None}
             full = clean(r[idx["全文內容"]]) if "全文內容" in idx else None
             if b in records:
                 rec = records[b]
@@ -338,9 +372,25 @@ def build(xlsx, legacy_path, decisions_dir=None):
             rec = records.get(b)
             if not rec:
                 continue
-            a = {h: clean(r[i]) for h, i in idx.items()
+            a = {CASE_FIELD_ALIASES.get(h, h): clean(r[i]) for h, i in idx.items()
                  if h not in ("案號", "標題", "法院", "裁判日期", "PDF下載連結", "原始連結") and clean(r[i])}
             rec.setdefault("caseAnalysis", {})[statute] = a
+
+    # 4b) 黨產條例：Word 整理表的事實簡述、上訴人、上訴結果、理由，依編號對應
+    party_groups = []
+    if os.path.exists(PARTY_ANALYSIS):
+        pa = json.load(open(PARTY_ANALYSIS, encoding="utf-8"))
+        party_groups = pa.get("groups", [])
+        by_no = {row["編號"]: row for row in pa["rows"]}
+        for b, pm in party_meta.items():
+            row = by_no.get(pm["編號"])
+            rec = records.get(b)
+            if not rec:
+                continue
+            a = {"編號": pm["編號"], "分類": (row or {}).get("分類") or pm["分類"]}
+            if row:
+                a.update({k: row[k] for k in ("事實簡述", "上訴人", "上訴結果", "結果", "理由") if row.get(k)})
+            rec.setdefault("caseAnalysis", {})[PARTY] = a
 
     # 5) 法條與文字長度
     for b, rec in records.items():
@@ -351,7 +401,9 @@ def build(xlsx, legacy_path, decisions_dir=None):
 
     # 6) 促轉會決定書併入，並以人為單位串成全案
     persons, revocations = [], []
-    if decisions_dir and os.path.isdir(decisions_dir):
+    if not (decisions_dir and os.path.isdir(decisions_dir)):
+        persons = keep_previous_decisions(records, texts)
+    else:
         dec_records, dec_texts = load_decisions(decisions_dir)
         for rec in dec_records:
             rec["hasText"] = True
@@ -371,9 +423,30 @@ def build(xlsx, legacy_path, decisions_dir=None):
     for i, rec in enumerate(ordered):
         rec["shard"] = i % SHARDS if rec["hasText"] else None
 
-    notes = {name: notes_from_sheet(wb[name]) for name in NOTE_SHEETS if name in wb.sheetnames}
-    notes["編碼說明"] = coding_notes
+    notes = {key: relabel(notes_from_sheet(wb[name])) for name, key in NOTE_SHEETS.items() if name in wb.sheetnames}
+    notes["編碼說明"] = relabel(coding_notes)
+    notes["黨產條例_分類"] = party_groups
+    for rec in ordered:
+        if rec.get("coding"):
+            rec["coding"] = relabel(rec["coding"])
     return ordered, texts, notes, persons
+
+
+def keep_previous_decisions(records, texts):
+    """沒有 tw-tj-decisions 時，從上次的輸出取回促轉會決定書與全案連結"""
+    idx_path = os.path.join(OUT_DIR, "index.json")
+    if not os.path.exists(idx_path):
+        return []
+    prev = [r for r in json.load(open(idx_path, encoding="utf-8")) if r.get("source") == "tjc"]
+    shards = {}
+    for rec in prev:
+        if rec.get("shard") is not None and rec["shard"] not in shards:
+            shards[rec["shard"]] = json.load(open(os.path.join(OUT_DIR, "text", f"{rec['shard']:02d}.json"), encoding="utf-8"))
+        records[rec["id"]] = rec
+        texts[rec["id"]] = shards.get(rec.get("shard"), {}).get(rec["id"], {})
+        rec["hasText"] = bool(texts[rec["id"]])
+    p_path = os.path.join(OUT_DIR, "persons.json")
+    return json.load(open(p_path, encoding="utf-8")) if os.path.exists(p_path) else []
 
 
 def write(ordered, texts, notes, xlsx, persons=()):

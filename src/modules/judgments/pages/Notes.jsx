@@ -14,24 +14,24 @@ const Body = () => {
   const { records, notes, meta } = useJudgments();
   const coded = records.filter(r => r.coding);
   const manual = coded.filter(r => r.coding['歸類方式'] === '人工判讀').length;
-  const sheets = ['財產型_有利類型統計', '財產型_否定類型統計', '年代趨勢統計'];
+  const sheets = ['228及戒嚴條例_有利類型統計', '228及戒嚴條例_否定類型統計', '政治檔案與促轉_類型統計', '年資條例_類型統計', '年代趨勢統計'];
 
   return (
     <div>
       <PageHeader
         kicker="轉型正義裁判" title="研究筆記與方法"
-        description="資料怎麼來、收錄標準、歸類方法，以及 Excel 中各統計表的原文。這一頁的文字取自研究助理的工作檔，未經改寫。"
+        description="資料怎麼來、收錄標準、歸類方法，以及 Excel 各統計表的原文（未改寫）。"
       />
 
       <Section title="資料來源">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <StatTile label="Excel 工作檔" value={<span className="text-sm font-normal break-all">{meta.source}</span>} sub={`檔案時間 ${meta.sourceModified?.replace('T', ' ')}`} />
-          <StatTile label="由 Excel 匯入" value={meta.bySource?.excel?.toLocaleString()} sub="七部條例工作表" />
+          <StatTile label="由 Excel 匯入" value={meta.bySource?.excel?.toLocaleString()} sub="八部條例工作表" />
           <StatTile label="沿用舊版網站資料" value={meta.bySource?.legacy || 0} sub="Excel 未收錄的裁定與最高法院案件" />
           <StatTile label="網站資料建置時間" value={<span className="text-base">{meta.builtAt?.replace('T', ' ')}</span>} sub="執行 scripts/build_data.py" />
         </div>
         <div className="text-sm text-stone-700 leading-relaxed space-y-2">
-          <p>裁判全文由 judge_mcp 專案的爬蟲程式自司法院裁判書系統，以各條例名稱為案由或關鍵字檢索下載，整理成 Excel 後再由研究助理閱讀歸類。同一件裁判若同時出現在兩部條例的檢索結果，網站只保留一筆，但在兩部條例下都查得到。</p>
+          <p>裁判全文由 judge_mcp 專案的爬蟲程式自司法院裁判書系統，以各條例名稱為案由或關鍵字檢索下載，整理成 Excel 後逐件閱讀歸類。同一件裁判若同時出現在兩部條例的檢索結果，網站只保留一筆，但在兩部條例下都查得到。</p>
           <p>Excel 更新後，在專案目錄執行 <code className="px-1 bg-stone-100 rounded-sm">python scripts/build_data.py</code> 即可重新產生網站資料。</p>
         </div>
       </Section>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useDocumentMeta } from '../../../core/seo';
 import { ArrowLeft, Check, X, Plus, FileText } from 'lucide-react';
 import { PageHeader, Empty, useDialog } from '../../../ui';
 import { useStore } from '../../../core/StoreContext';
@@ -21,6 +22,7 @@ const yearOfCase = (c) => { const m = c.match(/^[（(]\s*(\d{2,3})/); return m ?
 const Body = () => {
   const { name: raw } = useParams();
   const name = decodeURIComponent(raw);
+  useDocumentMeta({ title: `${name}｜全案追溯`, description: `${name} 的原判決、冤獄賠償／刑事補償裁判、促轉會撤銷決定與後續裁判之連結。` });
   const { persons, error } = usePersons();
   const j = useJudgments();
   const { links, update, canEdit, user } = useStore();

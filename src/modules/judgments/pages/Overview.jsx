@@ -58,7 +58,7 @@ const Body = () => {
       <PageHeader
         kicker="轉型正義裁判"
         title="研究成果總覽"
-        description={<>資料來源為研究助理整理的「{meta.source}」（{meta.sourceModified?.replace('T', ' ')} 版），包含七部條例的法院判決、裁定與司法院刑事補償法庭（原冤獄賠償覆議委員會）決定書。</>}
+        description={<>八部轉型正義條例的法院判決、裁定，司法院刑事補償法庭（原冤獄賠償覆議委員會）決定書，以及促轉會決定書。資料版本：{meta.sourceModified?.slice(0, 10)}。</>}
         actions={<Link to="/judgments/browse" className="btn-primary">進入裁判檢索</Link>}
       />
 
@@ -66,7 +66,7 @@ const Body = () => {
         <StatTile label="收錄裁判" value={records.length.toLocaleString()} sub={`全文 ${meta.withText?.toLocaleString()} 件`} />
         <StatTile label="已完成有利／否定歸類" value={s.coded.length.toLocaleString()} sub={`占 ${Math.round((s.coded.length / records.length) * 100)}%，其中人工判讀 ${s.manual} 件`} />
         <StatTile label="有利於聲請人／原告" value={s.pos.length.toLocaleString()} sub={`占已歸類 ${((s.pos.length / s.coded.length) * 100).toFixed(1)}%`} onClick={() => setList({ title: '有利於聲請人／原告', items: s.pos })} />
-        <StatTile label="逐件個案分析" value={records.filter(r => r.caseAnalysis).length} sub="政治檔案條例、促轉條例" onClick={() => setList({ title: '個案分析案件', items: records.filter(r => r.caseAnalysis) })} />
+        <StatTile label="逐件個案分析" value={records.filter(r => r.caseAnalysis).length} sub="黨產、年資、政治檔案、促轉條例" onClick={() => setList({ title: '個案分析案件', items: records.filter(r => r.caseAnalysis) })} />
       </div>
 
       <Section title="裁判年度分布" note="依裁判日期（民國年）統計，顏色代表所屬條例；點選年度可列出當年案件。">
@@ -80,7 +80,7 @@ const Body = () => {
       </Section>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        <Section title="各條例有利比例" note="僅計入已歸類案件（財產型請求）；點選色段可列出案件。">
+        <Section title="各條例有利比例" note="僅計入已歸類的 228 條例及戒嚴條例案件；點選色段可列出案件。">
           <div className="card p-4">
             <SplitBars
               rows={s.byStatute}

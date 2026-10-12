@@ -42,7 +42,7 @@ const SiteTab = () => {
   return (
     <div className="max-w-xl space-y-4">
       <label className="block"><span className="label">網站名稱</span><input className="field" disabled={!canEdit} value={settings.siteName} onChange={e => set({ siteName: e.target.value })} /></label>
-      <label className="block"><span className="label">研究室／負責人（顯示在側欄與首頁）</span><input className="field" disabled={!canEdit} value={settings.owner} onChange={e => set({ owner: e.target.value })} /></label>
+      <label className="block"><span className="label">副標題（選填，顯示在側欄與首頁）</span><input className="field" disabled={!canEdit} value={settings.owner} onChange={e => set({ owner: e.target.value })} /></label>
     </div>
   );
 };
@@ -98,7 +98,7 @@ const AccessTab = () => {
       <div className="card p-4 text-sm text-stone-700 leading-relaxed">
         {backendKind === 'firebase'
           ? <>目前使用<b>雲端同步</b>。下列 Google 帳號登入後可以修改筆記、文獻與設定；其他人只能瀏覽。{user && <>目前登入：{user.email}</>}</>
-          : <>目前使用<b>本機儲存</b>：所有資料存在這台電腦的瀏覽器，沒有登入機制。若要讓老師與助理共用同一份筆記，請依 README「雲端同步」一節設定 Firebase，設定後這份名單才會生效。</>}
+          : <>目前使用<b>本機儲存</b>：所有資料存在這台電腦的瀏覽器，沒有登入機制。若要多人共用同一份筆記，請依 README「雲端同步」一節設定 Firebase，設定後這份名單才會生效。</>}
       </div>
       <Section title="可編輯的帳號">
         {canEdit && (

@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { HashRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { StoreProvider, useStore } from './core/StoreContext';
 import { DialogProvider } from './ui';
 import ConsoleLayout from './layout/ConsoleLayout';
 import Home from './modules/home/Home';
 import { JudgmentsProvider } from './modules/judgments/data';
+import { RouteMeta } from './core/seo';
 
 const JOverview = lazy(() => import('./modules/judgments/pages/Overview'));
 const JBrowse = lazy(() => import('./modules/judgments/pages/Browse'));
@@ -31,12 +32,12 @@ const ScrollTop = () => {
 };
 
 const Shell = () => {
-  const { isLoading, settings } = useStore();
-  useEffect(() => { document.title = settings.siteName; }, [settings.siteName]);
+  const { isLoading } = useStore();
   if (isLoading) return <div className="h-full flex items-center justify-center text-sm text-stone-400">載入中…</div>;
   return (
     <JudgmentsProvider>
       <ScrollTop />
+      <RouteMeta />
       <Suspense fallback={<Loading />}>
         <Routes>
           <Route element={<ConsoleLayout />}>
@@ -75,13 +76,13 @@ const LegacyCaseRedirect = () => {
 };
 
 const App = () => (
-  <HashRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
     <DialogProvider>
       <StoreProvider>
         <Shell />
       </StoreProvider>
     </DialogProvider>
-  </HashRouter>
+  </BrowserRouter>
 );
 
 export default App;

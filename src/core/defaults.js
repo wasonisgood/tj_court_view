@@ -2,7 +2,7 @@ import literatureSeed from '../modules/literature/seed.json';
 
 export const DEFAULT_SETTINGS = {
   siteName: '轉型正義研究資料庫',
-  owner: '李怡俐老師研究室',
+  owner: '',
   // 雲端模式下可登入編輯的帳號（與 yi-lee-site 相同）
   allowedEmails: ['yili_lee@mx.nthu.edu.tw', 'wasonisgood@gmail.com'],
   moduleOrder: ['judgments', 'literature'],
@@ -10,8 +10,16 @@ export const DEFAULT_SETTINGS = {
   moduleLabels: {},
 };
 
-// 研究紀錄的起始內容：取自 Excel 各分頁的更新說明，之後由研究室自行新增
+// 研究紀錄的起始內容：取自 Excel 各分頁的更新說明，之後自行新增
 export const DEFAULT_LOG = [
+  {
+    id: 'log-2026-10-12',
+    date: '2026-10-12',
+    module: 'judgments',
+    title: '更新黨產條例與年資條例，新增個案分析',
+    body: '黨產條例最高行政法院判決依四大爭點（附隨組織之認定、命移轉為國有、無法移轉時追徵價額、動支財產遭否准）逐案整理事實、上訴人、上訴結果與理由，另收最高法院相關民刑事判決 4 件；新增年資條例 37 件及其個案分析。原「財產型」歸類改稱「228條例及戒嚴條例」。',
+    status: '完成',
+  },
   {
     id: 'log-2026-10-07b',
     date: '2026-10-07',

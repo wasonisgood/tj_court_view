@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 色彩沿用李怡俐老師個人網站（yi-lee-site）的石墨＋金色系，讓兩個系統看起來是同一套 */
+/* 石墨＋金色系 */
 @theme {
   --font-sans: "Inter", "Noto Sans TC", system-ui, sans-serif;
   --font-serif: "Noto Serif TC", "Songti TC", serif;
@@ -49,6 +49,7 @@
   --color-series-5: #e87ba4;
   --color-series-6: #008300;
   --color-series-7: #4a3aa7;
+  --color-series-8: #8a6d3b;
   --color-favorable: #2a78d6;
   --color-unfavorable: #eb6834;
 }

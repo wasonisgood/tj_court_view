@@ -4,7 +4,7 @@ import { useJudgments } from '../data';
 import { caseHref } from './CaseList';
 
 // 研究筆記中引用案件的寫法：「94台覆3」「111上420」「112訴更一106」或完整案號
-const REF_RE = /([A-Z]{4},\d{2,3},[^,\s、；）)]+,\d+,\d{8}(?:,\d)?)|((?<![\d])\d{2,3}(?:台覆|判|訴更一|訴|上|簡|台抗|台聲|裁|聲再)\d+)/g;
+const REF_RE = /([A-Z]{4},\d{2,3},[^,\s、；）)]+,\d+,\d{8}(?:,\d)?)|((?<![\d])\d{2,3}(?:台覆|判|年訴更一|年訴|年上|訴更一|訴|上|再|簡|台抗|台聲|裁|聲再)\d+)/g;
 
 export const RefText = ({ text }) => {
   const { find, findRef } = useJudgments();
