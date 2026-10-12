@@ -42,6 +42,19 @@ const splitSections = (sections) => {
   return result;
 };
 
+// 促轉會決定書的前置已在建置時分行（當事人、復查申請人、關於…），只補上字號與日期
+const tjcPreface = (text, r) => [r.caseNo && `【裁判字號】${r.caseNo}`, r.date && `【裁判日期】${r.date}`, r.cause && `【裁判案由】${r.cause}`, text].filter(Boolean).join('\n');
+
+// 促轉會決定書末的署名：建置時已整理成一行一個職稱
+const Signature = ({ text }) => (
+  <div className="pt-6 border-t border-brand-100 font-classic text-[16px] leading-loose text-brand-800 text-right">
+    {text.split('\n').map((line, i) => {
+      const [title, names] = line.split('　');
+      return <p key={i}>{names ? <><span className="text-brand-500 mr-3">{title}</span>{names}</> : line}</p>;
+    })}
+  </div>
+);
+
 const SectionTitle = ({ children }) => (
   <h2 className="font-classic text-xl font-bold text-brand-900 mb-5 pb-2 border-b border-brand-100">{children}</h2>
 );
@@ -126,10 +139,12 @@ const Body = () => {
             {sections && !processed.length && <div className="py-10 text-center text-brand-400 font-classic">這件裁判沒有全文資料，請參考右側原始連結。</div>}
             {processed.map(([title, text]) => (
               <section key={title}>
-                <SectionTitle>{title}</SectionTitle>
+                {title !== '署名' && <SectionTitle>{title}</SectionTitle>}
                 <div className="md:pl-8">
                   {title === '前置'
-                    ? <PrefaceCard text={formatPreface(text, r)} />
+                    ? <PrefaceCard text={r.source === 'tjc' ? tjcPreface(text, r) : formatPreface(text, r)} />
+                    : title === '署名'
+                    ? <Signature text={text} />
                     : <ParagraphReader
                         text={text}
                         pattern={pattern}

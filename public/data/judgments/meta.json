@@ -1,7 +1,7 @@
 {
   "source": "轉型正義判決匯出_含威權與政治檔案條例.xlsx",
   "sourceModified": "2026-10-12T19:03",
-  "builtAt": "2026-10-12T19:32",
+  "builtAt": "2026-10-12T19:44",
   "total": 2111,
   "withText": 2111,
   "coded": {
@@ -34,6 +34,6 @@
     "tjc": 107
   },
   "persons": 5897,
-  "personsLinked": 177,
-  "personsWithCourt": 113
+  "personsLinked": 187,
+  "personsWithCourt": 124
 }
